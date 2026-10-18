@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Alerts & Triage - Smart Forest Operations</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">EMERGENCY SOS & INCIDENT TRIAGE</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item">DASHBOARD</a>
+      <a href="/live-map" class="nav-item">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item">VISION MONITOR</a>
+      <a href="/zones" class="nav-item">ZONES</a>
+      <a href="/alerts" class="nav-item active">ALERTS</a>
+      <a href="/visitors" class="nav-item">VISITORS</a>
+      <a href="/officers" class="nav-item">OFFICERS</a>
+      <a href="/ai-models" class="nav-item">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online" id="socket-indicator"></span>
+        <span>EVENT QUEUE</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport" style="padding: 16px; display: flex; gap: 16px;">
+    <!-- Active Emergency Incidents (Left 60%) -->
+    <div style="flex: 0 0 60%; display: flex; flex-direction: column; gap: 12px;">
+      <div class="panel-container" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="panel-header">
+          <span>ACTIVE SEARCH & RESCUE (SAR) INCIDENTS</span>
+          <span class="badge badge-danger">PRIORITY DISPATCH</span>
+        </div>
+        <div class="panel-body" id="active-sos-container" style="padding: 12px;">
+          <div style="color: var(--text-muted); font-family: Consolas, monospace; text-align: center; padding: 20px;">
+            LOADING EMERGENCY INCIDENT STREAM...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert History and Triage (Right 40%) -->
+    <div style="flex: 0 0 40%; display: flex; flex-direction: column; gap: 12px;">
+      <div class="panel-container" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="panel-header">
+          <span>ALL RECENT NOTIFICATIONS & BREACHES</span>
+          <button class="btn-tactical" onclick="loadAllAlerts()">REFRESH</button>
+        </div>
+        <div class="panel-body" id="alerts-container">
+          <!-- Handled by AlertsManager -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/admin/static/js/socket_client.js"></script>
+  <script src="/admin/static/js/alerts_manager.js"></script>
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    if (window.smartSocket) {
+      window.smartSocket.connect("admin_control_room");
+      window.smartSocket.onEmergencyAlert(() => loadActiveSos());
+      window.smartSocket.onIncidentState(() => loadActiveSos());
+    }
+
+    async function loadActiveSos() {
+      const container = document.getElementById("active-sos-container");
+      try {
+        const res = await fetch("/api/sos/active");
+        const list = await res.json();
+        if (list.length === 0) {
+          container.innerHTML = `
+            <div style="color: var(--text-muted); font-family: Consolas, monospace; text-align: center; padding: 20px;">
+              NO ACTIVE EMERGENCY SOS PROTOCOLS TRIGGERED.
+            </div>
+          `;
+          return;
+        }
+
+        let html = "";
+        list.forEach(sos => {
+          html += `
+            <div class="incident-item critical" style="margin-bottom: 12px;">
+              <div class="incident-title-row">
+                <span class="incident-title" style="font-size: 13px;">${sos.sos_id} - ${sos.visitor?.full_name || sos.visitor_id}</span>
+                <span class="badge badge-critical">${sos.status}</span>
+              </div>
+              <div style="font-family: Consolas, monospace; font-size: 11px; margin: 6px 0; line-height: 1.5;">
+                TRIGGERED: <strong>${new Date(sos.triggered_at).toLocaleString()}</strong><br/>
+                LOCATION: <strong>[${sos.initial_lat.toFixed(5)}, ${sos.initial_lng.toFixed(5)}]</strong> in <strong>${sos.initial_zone}</strong><br/>
+                VISITOR PHONE: <strong>${sos.visitor?.phone || "N/A"}</strong><br/>
+                EMERGENCY CONTACT: <strong>${sos.visitor?.emergency_contact_name || "N/A"} (${sos.visitor?.emergency_contact_phone || "N/A"})</strong>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <a href="/officer/incidents/${sos.sos_id}" class="btn-tactical btn-danger" style="text-decoration: none;">DISPATCH RADAR & VIDEO</a>
+                <button class="btn-tactical btn-safe" onclick="resolveSos('${sos.sos_id}')">RESOLVE INCIDENT</button>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch (e) {
+        console.error("Failed to load active SOS:", e);
+      }
+    }
+
+    async function resolveSos(sosId) {
+      const notes = prompt("Enter SAR Resolution Report Notes:", "Rescued safely by ground patrol.");
+      if (!notes) return;
+      await fetch("/api/sos/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sos_id: sosId, resolution_notes: notes })
+      });
+      loadActiveSos();
+    }
+
+    loadActiveSos();
+  </script>
+</body>
+</html>

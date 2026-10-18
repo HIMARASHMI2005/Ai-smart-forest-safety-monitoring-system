@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tactical Dashboard - Smart Forest Operational System</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">SECTOR: BANDIPUR-MUDUMALAI</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item active">DASHBOARD</a>
+      <a href="/live-map" class="nav-item">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item">VISION MONITOR</a>
+      <a href="/zones" class="nav-item">ZONES</a>
+      <a href="/alerts" class="nav-item">ALERTS</a>
+      <a href="/visitors" class="nav-item">VISITORS</a>
+      <a href="/officers" class="nav-item">OFFICERS</a>
+      <a href="/ai-models" class="nav-item">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online" id="socket-indicator"></span>
+        <span>GATEWAY WSS</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport">
+    <!-- Left 65%: Large-Format Tactical GIS Map -->
+    <div class="split-left-65">
+      <div id="tactical-map" style="width: 100%; height: 100%;"></div>
+      <div style="position: absolute; top: 12px; right: 12px; z-index: 1000; background: rgba(18, 22, 20, 0.9); border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; display: flex; align-items: center; gap: 6px;">
+        <span style="color: var(--text-muted);">BASEMAP:</span>
+        <select id="select-basemap" style="background: #1B221E; color: #FFF; border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono); font-size: 10px; outline: none;">
+          <option value="tactical_dark" selected>Tactical Dark</option>
+          <option value="google_satellite">Google Satellite</option>
+          <option value="google_terrain">Google Terrain</option>
+          <option value="google_streets">Google Roads</option>
+          <option value="osm">OpenStreetMap</option>
+        </select>
+      </div>
+      <div style="position: absolute; bottom: 12px; left: 12px; z-index: 1000; background: rgba(18, 22, 20, 0.9); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px;">
+        <span style="color: #2D6A4F;">■ ZONE A: ECO TRAIL</span> &nbsp;
+        <span style="color: #E09F3E;">■ ZONE B: BUFFER</span> &nbsp;
+        <span style="color: #C1121F;">■ ZONE C: RESTRICTED</span> &nbsp;
+        <span style="color: #780000;">■ ZONE D: SANCTUARY</span>
+      </div>
+    </div>
+
+    <!-- Right 35%: Telemetry Matrix & Live Incident Deck -->
+    <div class="split-right-35">
+      <!-- Top Metrics Overview -->
+      <div class="metrics-row">
+        <div class="metric-card">
+          <div class="metric-label">Active Visitors</div>
+          <div class="metric-value" id="val-visitors">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Geofence Zones</div>
+          <div class="metric-value" id="val-zones">4</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Open Alerts</div>
+          <div class="metric-value" style="color: #FF4D4D;" id="val-alerts">0</div>
+        </div>
+        <div class="metric-card" onclick="window.location.href='/officers'" style="cursor: pointer;" title="View and Approve SAR Officers">
+          <div class="metric-label" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>SAR Officers</span>
+            <span id="badge-pending-officers" class="badge badge-warning" style="display: none; font-size: 9px; padding: 1px 4px;">0 PENDING</span>
+          </div>
+          <div class="metric-value" style="color: #93C5FD;" id="val-officers">0</div>
+        </div>
+      </div>
+
+      <!-- Live Incident Deck -->
+      <div class="panel-container" style="flex: 0 0 auto; max-height: 280px; display: flex; flex-direction: column;">
+        <div class="panel-header">
+          <span>PRIORITY INCIDENT STREAM</span>
+          <span class="badge badge-danger">REAL-TIME</span>
+        </div>
+        <div class="panel-body" id="alerts-container">
+          <div style="color: var(--text-muted); font-family: Consolas, monospace; text-align: center; padding: 10px;">
+            AWAITING INCIDENT PACKETS...
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time Telemetry Matrix -->
+      <div class="panel-container" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="panel-header">
+          <span>LIVE VISITOR TELEMETRY MATRIX</span>
+          <span class="badge badge-safe">ZERO POLLING</span>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+          <table class="mono-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>LAT/LNG</th>
+                <th>ZONE</th>
+                <th>RISK</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="telemetry-tbody">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">
+                  NO ACTIVE VISITOR TELEMETRY INGESTED YET.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/admin/static/js/socket_client.js"></script>
+  <script src="/admin/static/js/tactical_map.js"></script>
+  <script src="/admin/static/js/alerts_manager.js"></script>
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    if (window.smartSocket) {
+      window.smartSocket.connect("admin_control_room");
+
+      const telemetryMap = new Map();
+
+      function updateTelemetryTable(t) {
+        telemetryMap.set(t.visitor_id, t);
+        const tbody = document.getElementById("telemetry-tbody");
+        if (!tbody) return;
+
+        let rows = "";
+        telemetryMap.forEach(v => {
+          let badgeClass = "badge-safe";
+          if (v.current_risk_level === "CRITICAL") badgeClass = "badge-critical";
+          else if (v.current_risk_level === "HIGH") badgeClass = "badge-danger";
+          else if (v.current_risk_level === "MEDIUM") badgeClass = "badge-warning";
+
+          rows += `
+            <tr style="cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='rgba(45,106,79,0.2)'" onmouseout="this.style.background=''" onclick="if(window.tacticalMap) window.tacticalMap.flyToVisitor('${v.visitor_id}', ${v.latitude}, ${v.longitude})" title="Click to track ${v.full_name || v.visitor_id} on tactical map">
+              <td><strong>${v.full_name || v.visitor_id}</strong><br/><small style="color: var(--text-muted); font-size: 10px;">${v.visitor_id}</small></td>
+              <td>${v.latitude.toFixed(4)}, ${v.longitude.toFixed(4)}</td>
+              <td>${v.current_zone}</td>
+              <td><span class="badge ${badgeClass}">${v.current_risk_level} (${v.risk_score || 0})</span></td>
+              <td>${v.speed > 0 ? `${v.speed.toFixed(1)} km/h` : "STATIONARY"}</td>
+            </tr>
+          `;
+        });
+        tbody.innerHTML = rows;
+        document.getElementById("val-visitors").textContent = telemetryMap.size;
+      }
+
+      window.smartSocket.onVisitorLocation(updateTelemetryTable);
+      window.smartSocket.onZoneTransition(t => {
+        const item = telemetryMap.get(t.visitor_id);
+        if (item) {
+          item.current_zone = t.current_zone;
+          updateTelemetryTable(item);
+        }
+      });
+    }
+
+    // Load initial stats
+    fetch("/api/visitor/list").then(r => r.json()).then(data => {
+      document.getElementById("val-visitors").textContent = data.length;
+    });
+    fetch("/api/officer/list").then(r => r.json()).then(data => {
+      document.getElementById("val-officers").textContent = data.length;
+      const pending = data.filter(o => (o.approval_status || "PENDING") === "PENDING").length;
+      const pendingBadge = document.getElementById("badge-pending-officers");
+      if (pendingBadge && pending > 0) {
+        pendingBadge.textContent = `${pending} PENDING`;
+        pendingBadge.style.display = "inline-block";
+      }
+    });
+    fetch("/api/alerts?status=UNREAD").then(r => r.json()).then(data => {
+      document.getElementById("val-alerts").textContent = data.length;
+    });
+
+    // Populate initial live visitor matrix
+    fetch("/api/location/live-all").then(r => r.json()).then(data => {
+      if (Array.isArray(data)) {
+        data.forEach(v => {
+          if (v.last_latitude && v.last_longitude) {
+            updateTelemetryTable({
+              visitor_id: v.visitor_id,
+              full_name: v.full_name,
+              latitude: v.last_latitude,
+              longitude: v.last_longitude,
+              current_zone: v.current_zone,
+              current_risk_level: v.current_risk_level,
+              risk_score: v.risk_score || 0,
+              speed: v.speed || 0
+            });
+          }
+        });
+      }
+    }).catch(e => console.log("Live-all initial fetch:", e));
+  </script>
+</body>
+</html>

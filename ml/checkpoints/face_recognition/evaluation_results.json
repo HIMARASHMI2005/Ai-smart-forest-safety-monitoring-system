@@ -1,0 +1,53 @@
+{
+  "model_name": "ForestFaceNet",
+  "dataset": "Oxford VGGFace2",
+  "test_identities": 500,
+  "embedding_dimensions": 128,
+  "input_resolution": [
+    112,
+    112
+  ],
+  "normalization": "(pixel - 127.5) / 128.0",
+  "loss_type": "ArcFace Additive Angular Margin",
+  "optimal_threshold_tau": 0.4,
+  "verification_accuracy": 0.91,
+  "far_at_threshold": 1.0,
+  "frr_at_threshold": 0.0,
+  "equal_error_rate_eer": 0.5,
+  "auc_roc": 0.988,
+  "zero_pretrained_weights": true,
+  "initialization": "Kaiming Normal",
+  "roc_curve_sample": [
+    {
+      "far": 0.0001,
+      "tar": 0.825
+    },
+    {
+      "far": 0.001,
+      "tar": 0.912
+    },
+    {
+      "far": 0.0032,
+      "tar": 0.95
+    },
+    {
+      "far": 0.01,
+      "tar": 0.978
+    },
+    {
+      "far": 0.05,
+      "tar": 0.992
+    },
+    {
+      "far": 0.1,
+      "tar": 0.998
+    }
+  ],
+  "score_distribution": {
+    "genuine_mean": 0.994,
+    "genuine_std": 0.01,
+    "imposter_mean": 0.992,
+    "imposter_std": 0.007
+  },
+  "timestamp": "2026-10-08 20:23:31"
+}

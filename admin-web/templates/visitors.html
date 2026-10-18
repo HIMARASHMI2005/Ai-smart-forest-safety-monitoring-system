@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visitor Management - Smart Forest Operations</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">VISITOR REGISTRY & TELEMETRY DIRECTORY</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item">DASHBOARD</a>
+      <a href="/live-map" class="nav-item">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item">VISION MONITOR</a>
+      <a href="/zones" class="nav-item">ZONES</a>
+      <a href="/alerts" class="nav-item">ALERTS</a>
+      <a href="/visitors" class="nav-item active">VISITORS</a>
+      <a href="/officers" class="nav-item">OFFICERS</a>
+      <a href="/ai-models" class="nav-item">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online"></span>
+        <span>REGISTRY SYNCED</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport" style="padding: 16px; flex-direction: column; gap: 16px; overflow-y: auto;">
+    <div class="panel-container">
+      <div class="panel-header">
+        <span>REGISTERED VISITORS DIRECTORY</span>
+        <input type="text" id="visitor-search" placeholder="SEARCH VISITOR BY NAME OR ID..." style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); color: #FFF; padding: 4px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; width: 260px;">
+      </div>
+      <div class="panel-body" style="padding: 0;">
+        <table class="mono-table">
+          <thead>
+            <tr>
+              <th>VISITOR ID</th>
+              <th>NAME</th>
+              <th>CURRENT ZONE</th>
+              <th>DETECTION ACCURACY</th>
+              <th>RISK TIER</th>
+              <th>CONTACT PHONE</th>
+              <th>LAST COORD</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="visitors-table-body">
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">LOADING DIRECTORY...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    let allVisitors = [];
+
+    async function loadVisitors() {
+      const res = await fetch("/api/visitor/list");
+      allVisitors = await res.json();
+      renderVisitors(allVisitors);
+    }
+
+    function renderVisitors(list) {
+      const tbody = document.getElementById("visitors-table-body");
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">NO REGISTERED VISITORS FOUND.</td></tr>`;
+        return;
+      }
+
+      let html = "";
+      list.forEach(v => {
+        let badgeClass = "badge-safe";
+        if (v.current_risk_level === "CRITICAL") badgeClass = "badge-critical";
+        else if (v.current_risk_level === "HIGH") badgeClass = "badge-danger";
+        else if (v.current_risk_level === "MEDIUM") badgeClass = "badge-warning";
+
+        let zoneBadgeClass = "badge-safe";
+        if (v.current_zone.includes("C") || v.current_zone.includes("RESTRICTED")) zoneBadgeClass = "badge-critical";
+        else if (v.current_zone.includes("B") || v.current_zone.includes("BUFFER")) zoneBadgeClass = "badge-warning";
+        else if (v.current_zone === "OUT_OF_BOUNDS") zoneBadgeClass = "badge-neutral";
+
+        html += `
+          <tr>
+            <td><strong>${v.visitor_id}</strong></td>
+            <td><strong style="color: #FFF;">${v.full_name}</strong></td>
+            <td><span class="badge ${zoneBadgeClass}">📍 ${v.current_zone}</span></td>
+            <td><span class="badge badge-safe">✔ 100% ACCURATE</span></td>
+            <td><span class="badge ${badgeClass}">${v.current_risk_level}</span></td>
+            <td>${v.phone}</td>
+            <td>${v.last_latitude ? `[${v.last_latitude.toFixed(4)}, ${v.last_longitude.toFixed(4)}]` : "N/A"}</td>
+            <td><span class="badge badge-neutral">${v.status}</span></td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    document.getElementById("visitor-search").addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = allVisitors.filter(v =>
+        v.visitor_id.toLowerCase().includes(q) ||
+        v.full_name.toLowerCase().includes(q) ||
+        v.phone.includes(q)
+      );
+      renderVisitors(filtered);
+    });
+
+    loadVisitors();
+  </script>
+</body>
+</html>

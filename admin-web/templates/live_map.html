@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tactical Live Map - Smart Forest Operational System</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">LARGE-FORMAT TACTICAL GIS MAP</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item">DASHBOARD</a>
+      <a href="/live-map" class="nav-item active">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item">VISION MONITOR</a>
+      <a href="/zones" class="nav-item">ZONES</a>
+      <a href="/alerts" class="nav-item">ALERTS</a>
+      <a href="/visitors" class="nav-item">VISITORS</a>
+      <a href="/officers" class="nav-item">OFFICERS</a>
+      <a href="/ai-models" class="nav-item">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online" id="socket-indicator"></span>
+        <span>GIS LIVE ENGINE</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport" style="position: relative;">
+    <div id="tactical-map" style="width: 100%; height: 100%;"></div>
+
+    <!-- Map Overlay Controls -->
+    <div style="position: absolute; top: 16px; right: 16px; z-index: 1000; background: rgba(27, 34, 30, 0.95); border: 1px solid var(--border-color); border-radius: 4px; padding: 12px; width: 280px; font-family: var(--font-mono); font-size: 11px; box-shadow: 0 4px 16px rgba(0,0,0,0.7);">
+      <div style="font-weight: bold; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">GIS LAYER CONTROLS</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label><input type="checkbox" checked id="chk-zones"> Geofence Polygons</label>
+        <label><input type="checkbox" checked id="chk-visitors"> Active Visitor Markers</label>
+        <label><input type="checkbox" checked id="chk-officers"> Field Rescuer Units</label>
+        <label><input type="checkbox" checked id="chk-trails"> Breadcrumb Trails</label>
+      </div>
+
+      <div style="font-weight: bold; margin-top: 12px; margin-bottom: 6px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">BASEMAP ENGINE</div>
+      <select id="select-basemap" style="width: 100%; background: #121614; color: #FFF; border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; outline: none;">
+        <option value="tactical_dark" selected>Tactical Dark (CartoDB)</option>
+        <option value="google_satellite">Google Maps Satellite (Hybrid)</option>
+        <option value="google_terrain">Google Maps Terrain</option>
+        <option value="google_streets">Google Maps Roadmap</option>
+        <option value="osm">OpenStreetMap (Standard)</option>
+      </select>
+
+      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 10px; line-height: 1.5;">
+        TILES: Google Maps / OSM / Carto<br/>
+        PROJECTION: EPSG:4326 (WGS 84)<br/>
+        ALGORITHM: Shapely Ray-Casting
+      </div>
+    </div>
+  </main>
+
+  <script src="/admin/static/js/socket_client.js"></script>
+  <script src="/admin/static/js/tactical_map.js"></script>
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    if (window.smartSocket) {
+      window.smartSocket.connect("admin_control_room");
+    }
+  </script>
+</body>
+</html>

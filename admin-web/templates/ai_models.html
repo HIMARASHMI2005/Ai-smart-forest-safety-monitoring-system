@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Model Provenance & Verification - Smart Forest Operations</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">CUSTOM ML PROVENANCE & TEST EVALUATION</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item">DASHBOARD</a>
+      <a href="/live-map" class="nav-item">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item">VISION MONITOR</a>
+      <a href="/zones" class="nav-item">ZONES</a>
+      <a href="/alerts" class="nav-item">ALERTS</a>
+      <a href="/visitors" class="nav-item">VISITORS</a>
+      <a href="/officers" class="nav-item">OFFICERS</a>
+      <a href="/ai-models" class="nav-item active">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online"></span>
+        <span>0 PRETRAINED WEIGHTS</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport" style="padding: 16px; gap: 16px; display: flex; overflow-y: auto;">
+    <!-- ForestPersonNet Model Card -->
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+      <div class="panel-container">
+        <div class="panel-header">
+          <span>1. ForestPersonNet (Human Detection CNN)</span>
+          <span class="badge badge-safe">CIoU + BCE</span>
+        </div>
+        <div class="panel-body">
+          <div style="font-family: var(--font-mono); font-size: 11px; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px;">
+            <div>DOMAIN: <strong>Wildland, Forest, Search-and-Rescue</strong></div>
+            <div>DATASET: <strong>ETRI/KAIST ForestPersons (96,482 images)</strong></div>
+            <div>OFFICIAL SPLIT: <strong>Train: 67,686 | Val: 18,243 | Test: 10,553</strong></div>
+            <div>INITIALIZATION: <strong>Kaiming Normal (From Scratch)</strong></div>
+            <div>NECK & HEAD: <strong>PAN / FPN Multi-Scale Heads (P3, P4, P5)</strong></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <div class="metric-card">
+              <div class="metric-label">mAP @ 0.5</div>
+              <div class="metric-value" id="fpn-map50" style="color: #52B788;">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Precision @ 0.5</div>
+              <div class="metric-value" id="fpn-prec">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Recall @ 0.5</div>
+              <div class="metric-value" id="fpn-rec">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Benchmark FPS</div>
+              <div class="metric-value" id="fpn-fps">--</div>
+            </div>
+          </div>
+
+          <div class="panel-header" style="background: none; padding-left: 0;">PRECISION-RECALL PROFILE</div>
+          <div id="fpn-pr-table" style="font-family: var(--font-mono); font-size: 11px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ForestFaceNet Model Card -->
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+      <div class="panel-container">
+        <div class="panel-header">
+          <span>2. ForestFaceNet (128-D Biometric Embedding)</span>
+          <span class="badge badge-safe">ArcFace Margin</span>
+        </div>
+        <div class="panel-body">
+          <div style="font-family: var(--font-mono); font-size: 11px; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px;">
+            <div>DOMAIN: <strong>Wildland Biometric Identification</strong></div>
+            <div>DATASET: <strong>Oxford VGGFace2 (3.31M images, 9,131 IDs)</strong></div>
+            <div>OBJECTIVE: <strong>Additive Angular Margin (s=64.0, m=0.5)</strong></div>
+            <div>OUTPUT: <strong>128-D L2-Normalized Unit Vector</strong></div>
+            <div>COMPARISON: <strong>Cosine Similarity Matcher</strong></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <div class="metric-card">
+              <div class="metric-label">Verification Acc</div>
+              <div class="metric-value" id="ffn-acc" style="color: #52B788;">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">ROC AUC</div>
+              <div class="metric-value" id="ffn-auc">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">FAR @ Threshold</div>
+              <div class="metric-value" id="ffn-far">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Optimal Threshold (&tau;)</div>
+              <div class="metric-value" id="ffn-tau" style="color: #E09F3E;">--</div>
+            </div>
+          </div>
+
+          <div class="panel-header" style="background: none; padding-left: 0;">ROC CURVE SAMPLES (FAR vs TAR)</div>
+          <div id="ffn-roc-table" style="font-family: var(--font-mono); font-size: 11px;"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    async function loadMetrics() {
+      try {
+        const res = await fetch("/api/vision/metrics");
+        const data = await res.json();
+
+        // ForestPersonNet
+        const fpn = data.forest_person_net;
+        if (fpn && fpn.mAP_50) {
+          document.getElementById("fpn-map50").textContent = (fpn.mAP_50 * 100).toFixed(1) + "%";
+          document.getElementById("fpn-prec").textContent = (fpn.precision_at_05 * 100).toFixed(1) + "%";
+          document.getElementById("fpn-rec").textContent = (fpn.recall_at_05 * 100).toFixed(1) + "%";
+          document.getElementById("fpn-fps").textContent = fpn.fps + " FPS";
+
+          if (fpn.pr_curve_sample) {
+            let prHtml = `<table class="mono-table"><thead><tr><th>RECALL</th><th>PRECISION</th></tr></thead><tbody>`;
+            fpn.pr_curve_sample.forEach(pt => {
+              prHtml += `<tr><td>${pt.recall.toFixed(2)}</td><td>${pt.precision.toFixed(2)}</td></tr>`;
+            });
+            prHtml += `</tbody></table>`;
+            document.getElementById("fpn-pr-table").innerHTML = prHtml;
+          }
+        }
+
+        // ForestFaceNet
+        const ffn = data.forest_face_net;
+        if (ffn && ffn.verification_accuracy) {
+          document.getElementById("ffn-acc").textContent = (ffn.verification_accuracy * 100).toFixed(1) + "%";
+          document.getElementById("ffn-auc").textContent = ffn.auc_roc.toFixed(3);
+          document.getElementById("ffn-far").textContent = (ffn.far_at_threshold * 100).toFixed(2) + "%";
+          document.getElementById("ffn-tau").textContent = ffn.optimal_threshold_tau;
+
+          if (ffn.roc_curve_sample) {
+            let rocHtml = `<table class="mono-table"><thead><tr><th>FAR (FALSE ACCEPT)</th><th>TAR (TRUE ACCEPT)</th></tr></thead><tbody>`;
+            ffn.roc_curve_sample.forEach(pt => {
+              rocHtml += `<tr><td>${pt.far}</td><td>${(pt.tar * 100).toFixed(1)}%</td></tr>`;
+            });
+            rocHtml += `</tbody></table>`;
+            document.getElementById("ffn-roc-table").innerHTML = rocHtml;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load metrics:", e);
+      }
+    }
+
+    loadMetrics();
+  </script>
+</body>
+</html>

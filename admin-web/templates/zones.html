@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zone Boundary Manager - Smart Forest Operational System</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    /* Tactical Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 12, 10, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-window {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 12px 18px;
+      background: var(--bg-surface-elevated);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .modal-body {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-footer {
+      padding: 12px 18px;
+      background: var(--bg-surface-elevated);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-group label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-input {
+      background: #121614;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 7px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--accent-safe);
+    }
+    .coords-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .btn-action {
+      cursor: pointer;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: bold;
+      transition: all 0.15s ease;
+    }
+    .btn-edit {
+      background: rgba(37, 99, 235, 0.2);
+      color: #60A5FA;
+      border: 1px solid #3B82F6;
+    }
+    .btn-edit:hover {
+      background: #2563EB;
+      color: #FFF;
+    }
+    .btn-del {
+      background: rgba(217, 4, 41, 0.2);
+      color: #FF4D4D;
+      border: 1px solid #D90429;
+    }
+    .btn-del:hover {
+      background: #D90429;
+      color: #FFF;
+    }
+    .toast-msg {
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      margin-bottom: 8px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">GEOFENCE BOUNDARY & PERIMETER COMMAND</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item">DASHBOARD</a>
+      <a href="/live-map" class="nav-item">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item">VISION MONITOR</a>
+      <a href="/zones" class="nav-item active">ZONES</a>
+      <a href="/alerts" class="nav-item">ALERTS</a>
+      <a href="/visitors" class="nav-item">VISITORS</a>
+      <a href="/officers" class="nav-item">OFFICERS</a>
+      <a href="/ai-models" class="nav-item">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online"></span>
+        <span>SHAPELY RAY-CASTING</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport" style="padding: 16px; flex-direction: column; gap: 16px; overflow-y: auto;">
+    <div id="zone-toast" class="toast-msg"></div>
+
+    <div class="panel-container">
+      <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>CONFIGURED GEOFENCE ZONES (BANDIPUR-MUDUMALAI SECTOR)</span>
+        <button onclick="openCreateModal()" class="btn-tactical btn-safe" style="padding: 5px 12px; font-size: 11px;">
+          + ADD NEW GEOFENCE ZONE
+        </button>
+      </div>
+      <div class="panel-body" style="padding: 0;">
+        <table class="mono-table">
+          <thead>
+            <tr>
+              <th>ZONE ID</th>
+              <th>NAME</th>
+              <th>SEVERITY</th>
+              <th>RISK MULTIPLIER</th>
+              <th>LAT BOUNDS</th>
+              <th>LNG BOUNDS</th>
+              <th>COLOR</th>
+              <th>ENFORCEMENT</th>
+              <th style="text-align: right;">OPERATIONS</th>
+            </tr>
+          </thead>
+          <tbody id="zones-table-body">
+            <tr>
+              <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">LOADING GEOFENCE REGISTRY...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel-container" style="max-width: 900px;">
+      <div class="panel-header">
+        <span>GEOFENCE ENFORCEMENT & RAY-CASTING ARCHITECTURE</span>
+      </div>
+      <div class="panel-body" style="font-family: var(--font-mono); font-size: 12px; line-height: 1.6;">
+        <p><strong>1. Spatial Envelope Filtering:</strong> Fast coordinate envelope check: <code>min_lat &le; lat &le; max_lat</code> and <code>min_lng &le; lng &le; max_lng</code>.</p>
+        <p><strong>2. Exact Polygon Ray-Casting:</strong> Planar geometric ray intersection parity via Shapely / GEOS engine to evaluate containment down to millimeter precision.</p>
+        <p><strong>3. Dynamic Hot-Reload:</strong> Any edit to zone coordinates, risk severity, or status automatically invalidates the live cache (<code>ZoneManager.invalidate_cache()</code>) ensuring instant real-time telemetry adherence without server downtime.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Interactive Modal for Editing/Creating Zones -->
+  <div id="zone-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-window">
+      <div class="modal-header">
+        <span id="modal-title" style="color: var(--accent-safe);">EDIT GEOFENCE ZONE</span>
+        <button onclick="closeModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modal-mode" value="edit">
+
+        <div class="form-group">
+          <label>Zone Identifier (ID / Code)</label>
+          <input type="text" id="inp-zone-id" class="form-input" placeholder="e.g. ZONE_E">
+        </div>
+
+        <div class="form-group">
+          <label>Zone Name / Designation</label>
+          <input type="text" id="inp-zone-name" class="form-input" placeholder="e.g. Elephant Migration Corridor">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Severity Level</label>
+            <select id="inp-zone-severity" class="form-input">
+              <option value="LOW">LOW (Designated Eco Trail)</option>
+              <option value="MEDIUM">MEDIUM (Monitored Buffer)</option>
+              <option value="HIGH">HIGH (Restricted Wildlife)</option>
+              <option value="CRITICAL">CRITICAL (Core Hazard Zone)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Zone Map Color</label>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <input type="color" id="inp-zone-color-picker" style="height: 32px; width: 40px; border: 1px solid var(--border-color); background: none; cursor: pointer;" onchange="document.getElementById('inp-zone-color').value = this.value">
+              <input type="text" id="inp-zone-color" class="form-input" style="flex: 1;" value="#2D6A4F" onchange="document.getElementById('inp-zone-color-picker').value = this.value">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="flex-direction: row; align-items: center; gap: 8px;">
+          <input type="checkbox" id="inp-zone-active" checked style="accent-color: var(--accent-safe); cursor: pointer; width: 16px; height: 16px;">
+          <label for="inp-zone-active" style="cursor: pointer; text-transform: none; font-size: 12px; color: #FFF;">
+            Active Geofence Enforcement (Triggers real-time alerts & breach logging)
+          </label>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 12px;">
+          <label style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-rescuer-light); font-weight: bold; text-transform: uppercase;">
+            GEOGRAPHIC BOUNDING BOX (WGS84 COORDINATES)
+          </label>
+          <div class="coords-grid" style="margin-top: 8px;">
+            <div class="form-group">
+              <label>Min Latitude (South)</label>
+              <input type="number" step="0.0001" id="inp-min-lat" class="form-input" placeholder="11.6400">
+            </div>
+            <div class="form-group">
+              <label>Max Latitude (North)</label>
+              <input type="number" step="0.0001" id="inp-max-lat" class="form-input" placeholder="11.6700">
+            </div>
+            <div class="form-group">
+              <label>Min Longitude (West)</label>
+              <input type="number" step="0.0001" id="inp-min-lng" class="form-input" placeholder="76.6000">
+            </div>
+            <div class="form-group">
+              <label>Max Longitude (East)</label>
+              <input type="number" step="0.0001" id="inp-max-lng" class="form-input" placeholder="76.6500">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeModal()" class="btn-tactical" style="padding: 6px 14px; font-size: 11px;">CANCEL</button>
+        <button onclick="saveZoneCommit()" class="btn-tactical btn-safe" style="padding: 6px 16px; font-size: 11px;">
+          SAVE ZONE COMMITS
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentZones = [];
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function showToast(msg, isError = false) {
+      const t = document.getElementById("zone-toast");
+      if (!t) return;
+      t.style.display = "block";
+      t.style.background = isError ? "rgba(217, 4, 41, 0.2)" : "rgba(45, 106, 79, 0.2)";
+      t.style.border = isError ? "1px solid #D90429" : "1px solid #2D6A4F";
+      t.style.color = isError ? "#FF4D4D" : "#52B788";
+      t.textContent = msg;
+      setTimeout(() => { t.style.display = "none"; }, 4000);
+    }
+
+    async function loadZones() {
+      try {
+        const res = await fetch("/api/zones");
+        currentZones = await res.json();
+        const tbody = document.getElementById("zones-table-body");
+        if (!tbody) return;
+
+        const riskWeights = { "ZONE_A": "+5 (Trail)", "ZONE_B": "+25 (Buffer)", "ZONE_C": "+55 (Corridor)", "ZONE_D": "+80 (Core Danger)" };
+
+        let html = "";
+        currentZones.forEach(z => {
+          let badgeClass = "badge-safe";
+          if (z.severity === "CRITICAL") badgeClass = "badge-critical";
+          else if (z.severity === "HIGH") badgeClass = "badge-danger";
+          else if (z.severity === "MEDIUM") badgeClass = "badge-warning";
+
+          const enforcementBadge = z.active !== false
+            ? `<span class="badge badge-safe">ACTIVE</span>`
+            : `<span class="badge badge-muted">INACTIVE</span>`;
+
+          html += `
+            <tr>
+              <td><strong style="color: #60A5FA;">${z.id}</strong></td>
+              <td><strong>${z.name}</strong></td>
+              <td><span class="badge ${badgeClass}">${z.severity}</span></td>
+              <td><strong>${riskWeights[z.code] || "+" + (z.severity === "CRITICAL" ? "80" : "40")}</strong></td>
+              <td style="font-family: Consolas, monospace; font-size: 11px;">[${z.min_lat.toFixed(4)}, ${z.max_lat.toFixed(4)}]</td>
+              <td style="font-family: Consolas, monospace; font-size: 11px;">[${z.min_lng.toFixed(4)}, ${z.max_lng.toFixed(4)}]</td>
+              <td>
+                <span style="display: inline-block; vertical-align: middle; width: 14px; height: 14px; background: ${z.color_hex}; border: 1px solid #FFF; border-radius: 2px;"></span>
+                <span style="font-size: 11px; margin-left: 4px;">${z.color_hex}</span>
+              </td>
+              <td>${enforcementBadge}</td>
+              <td style="text-align: right; white-space: nowrap;">
+                <button onclick="openEditModal('${z.id}')" class="btn-action btn-edit" style="margin-right: 4px;">EDIT</button>
+                <button onclick="deleteZoneConfirm('${z.id}')" class="btn-action btn-del">DELETE</button>
+              </td>
+            </tr>
+          `;
+        });
+        tbody.innerHTML = html;
+      } catch (e) {
+        console.error("Failed to load zones:", e);
+      }
+    }
+
+    function openEditModal(zoneId) {
+      const z = currentZones.find(item => item.id === zoneId);
+      if (!z) return;
+
+      document.getElementById("modal-mode").value = "edit";
+      document.getElementById("modal-title").textContent = `EDIT GEOFENCE ZONE: ${z.id}`;
+      document.getElementById("modal-title").style.color = "#60A5FA";
+
+      const inpId = document.getElementById("inp-zone-id");
+      inpId.value = z.id;
+      inpId.disabled = true;
+
+      document.getElementById("inp-zone-name").value = z.name || "";
+      document.getElementById("inp-zone-severity").value = z.severity || "LOW";
+      document.getElementById("inp-zone-color").value = z.color_hex || "#2D6A4F";
+      document.getElementById("inp-zone-color-picker").value = z.color_hex || "#2D6A4F";
+      document.getElementById("inp-zone-active").checked = (z.active !== false);
+
+      document.getElementById("inp-min-lat").value = z.min_lat;
+      document.getElementById("inp-max-lat").value = z.max_lat;
+      document.getElementById("inp-min-lng").value = z.min_lng;
+      document.getElementById("inp-max-lng").value = z.max_lng;
+
+      document.getElementById("zone-modal").style.display = "flex";
+    }
+
+    function openCreateModal() {
+      document.getElementById("modal-mode").value = "create";
+      document.getElementById("modal-title").textContent = "DEFINE NEW GEOFENCE ZONE";
+      document.getElementById("modal-title").style.color = "var(--accent-safe)";
+
+      const inpId = document.getElementById("inp-zone-id");
+      inpId.value = `ZONE_${String.fromCharCode(65 + currentZones.length)}`;
+      inpId.disabled = false;
+
+      document.getElementById("inp-zone-name").value = "";
+      document.getElementById("inp-zone-severity").value = "LOW";
+      document.getElementById("inp-zone-color").value = "#2D6A4F";
+      document.getElementById("inp-zone-color-picker").value = "#2D6A4F";
+      document.getElementById("inp-zone-active").checked = true;
+
+      document.getElementById("inp-min-lat").value = 11.6600;
+      document.getElementById("inp-max-lat").value = 11.6800;
+      document.getElementById("inp-min-lng").value = 76.6100;
+      document.getElementById("inp-max-lng").value = 76.6350;
+
+      document.getElementById("zone-modal").style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("zone-modal").style.display = "none";
+    }
+
+    async function saveZoneCommit() {
+      const mode = document.getElementById("modal-mode").value;
+      const zoneId = document.getElementById("inp-zone-id").value.trim().toUpperCase();
+      const name = document.getElementById("inp-zone-name").value.trim();
+      const severity = document.getElementById("inp-zone-severity").value;
+      const color_hex = document.getElementById("inp-zone-color").value.trim();
+      const active = document.getElementById("inp-zone-active").checked;
+
+      const min_lat = parseFloat(document.getElementById("inp-min-lat").value);
+      const max_lat = parseFloat(document.getElementById("inp-max-lat").value);
+      const min_lng = parseFloat(document.getElementById("inp-min-lng").value);
+      const max_lng = parseFloat(document.getElementById("inp-max-lng").value);
+
+      if (!zoneId || !name) {
+        alert("Zone ID and Name are required.");
+        return;
+      }
+      if (isNaN(min_lat) || isNaN(max_lat) || isNaN(min_lng) || isNaN(max_lng)) {
+        alert("Valid decimal coordinates are required for all 4 bounding points.");
+        return;
+      }
+      if (min_lat >= max_lat || min_lng >= max_lng) {
+        alert("Min coordinate must be strictly less than Max coordinate.");
+        return;
+      }
+
+      const payload = {
+        name,
+        code: zoneId,
+        severity,
+        color_hex,
+        active,
+        min_lat,
+        max_lat,
+        min_lng,
+        max_lng
+      };
+
+      try {
+        let res;
+        if (mode === "create") {
+          payload.id = zoneId;
+          res = await fetch("/api/zones", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          res = await fetch(`/api/zones/${zoneId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`SUCCESS: Geofence Zone ${zoneId} committed and cache invalidated!`);
+          closeModal();
+          loadZones();
+        } else {
+          alert(`Error saving zone: ${data.error || "Unknown server error"}`);
+        }
+      } catch (err) {
+        console.error("Save error:", err);
+        alert("Failed to communicate with tactical server.");
+      }
+    }
+
+    async function deleteZoneConfirm(zoneId) {
+      if (!confirm(`CONFIRM GEOFENCE REMOVAL:\nAre you sure you want to delete ${zoneId}? This will remove all polygon boundaries and ray-casting checks for this zone.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/zones/${zoneId}`, {
+          method: "DELETE"
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`SUCCESS: Geofence Zone ${zoneId} deleted!`);
+          loadZones();
+        } else {
+          alert(`Failed to delete zone: ${data.error || "Server error"}`);
+        }
+      } catch (err) {
+        console.error("Delete error:", err);
+        alert("Failed to communicate with tactical server.");
+      }
+    }
+
+    loadZones();
+  </script>
+</body>
+</html>

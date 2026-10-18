@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Forest Command & Control Gateway</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <!-- Emergency High-Visibility Banner -->
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <!-- Operational Header -->
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">SECTOR: BANDIPUR-MUDUMALAI</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item" id="nav-dashboard">DASHBOARD</a>
+      <a href="/live-map" class="nav-item" id="nav-live-map">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item" id="nav-vision-monitor">VISION MONITOR</a>
+      <a href="/zones" class="nav-item" id="nav-zones">ZONES</a>
+      <a href="/alerts" class="nav-item" id="nav-alerts">ALERTS</a>
+      <a href="/visitors" class="nav-item" id="nav-visitors">VISITORS</a>
+      <a href="/officers" class="nav-item" id="nav-officers">OFFICERS</a>
+      <a href="/ai-models" class="nav-item" id="nav-ai-models">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item" id="nav-logs">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online" id="socket-indicator"></span>
+        <span>GATEWAY WSS</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- UTC</div>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main class="main-viewport">
+    <!-- Page Content Injected Here -->
+  </main>
+
+  <script src="/admin/static/js/socket_client.js"></script>
+  <script src="/admin/static/js/tactical_map.js"></script>
+  <script src="/admin/static/js/alerts_manager.js"></script>
+  <script>
+    // Real-time UTC operational clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Highlight active navigation tab
+    const currentPath = window.location.pathname;
+    document.querySelectorAll(".nav-item").forEach(item => {
+      if (item.getAttribute("href") === currentPath || (currentPath === "/" && item.getAttribute("href") === "/dashboard")) {
+        item.classList.add("active");
+      }
+    });
+
+    // Connect socket
+    if (window.smartSocket) {
+      window.smartSocket.connect("admin_control_room");
+    }
+  </script>
+</body>
+</html>

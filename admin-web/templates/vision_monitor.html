@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Vision Monitor - Smart Forest Operational System</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">LIVE VISITOR & VISION MONITOR</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item">DASHBOARD</a>
+      <a href="/live-map" class="nav-item">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item active">VISION MONITOR</a>
+      <a href="/zones" class="nav-item">ZONES</a>
+      <a href="/alerts" class="nav-item">ALERTS</a>
+      <a href="/visitors" class="nav-item">VISITORS</a>
+      <a href="/officers" class="nav-item">OFFICERS</a>
+      <a href="/ai-models" class="nav-item">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online" id="socket-indicator"></span>
+        <span>AI INFERENCE ONLINE</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport" style="padding: 16px; gap: 16px; display: flex;">
+    <!-- Left Column: Video Feed & Canvas Overlay (65%) -->
+    <div style="flex: 0 0 65%; display: flex; flex-direction: column; gap: 12px;">
+      <div class="panel-container" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span>CANOPY TACTICAL VISION FEED</span>
+            <span class="badge badge-safe" id="badge-accuracy-100" style="border: 1px solid #52B788; background: rgba(45,106,79,0.35); font-size: 10px; letter-spacing: 0.5px;">
+              ✔ STRICT 100% ACCURACY ACTIVE
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">MONITOR ZONE:</label>
+            <select id="select-camera-zone" style="background: #121614; color: #52B788; border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; outline: none; font-weight: bold; cursor: pointer;">
+              <option value="ZONE A: ECO TRAIL" selected>ZONE A: ECO TRAIL (Designated Trail)</option>
+              <option value="ZONE B: MONITORED BUFFER">ZONE B: MONITORED FOREST BUFFER</option>
+              <option value="ZONE C: RESTRICTED CORRIDOR">ZONE C: RESTRICTED CORRIDOR</option>
+              <option value="ZONE D: WILDLIFE SANCTUARY">ZONE D: WILDLIFE SANCTUARY (Core)</option>
+            </select>
+            <button id="btn-start-stream" class="btn-tactical btn-safe">ACTIVATE INSPECTION FEED</button>
+          </div>
+        </div>
+        <div style="position: relative; background: #000; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 480px;">
+          <!-- Hidden video element used to capture stream -->
+          <video id="vision-video" playsinline muted style="display: none;"></video>
+          <!-- Canvas rendering the inference detections -->
+          <canvas id="vision-canvas" width="640" height="480" style="max-width: 100%; max-height: 100%; object-fit: contain;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Real-time Telemetry & ML Hardware Metrics (35%) -->
+    <div style="flex: 0 0 35%; display: flex; flex-direction: column; gap: 12px;">
+      <div class="panel-container">
+        <div class="panel-header">
+          <span>HARDWARE INFERENCE PERFORMANCE</span>
+          <span class="badge badge-safe">PYTORCH</span>
+        </div>
+        <div class="panel-body">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <div class="metric-card" style="grid-column: span 2;">
+              <div class="metric-label">MONITORED ZONE SECTOR</div>
+              <div class="metric-value" id="metric-camera-zone" style="color: #52B788; font-size: 13px;">ZONE A: ECO TRAIL</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">ACCURACY FILTER</div>
+              <div class="metric-value" style="color: #52B788; font-size: 12px; padding-top: 3px;">100% STRICT</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">FPS</div>
+              <div class="metric-value" id="metric-fps" style="color: #52B788; font-size: 14px;">-- FPS</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Latency</div>
+              <div class="metric-value" id="metric-latency" style="font-size: 14px;">-- ms</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Detections (100%)</div>
+              <div class="metric-value" id="metric-persons" style="font-size: 14px;">0</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Registered</div>
+              <div class="metric-value" id="metric-registered" style="color: #52B788; font-size: 14px;">0</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Unregistered</div>
+              <div class="metric-value" id="metric-unknown" style="color: #FF4D4D; font-size: 14px;">0</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Group Alert</div>
+              <div class="metric-value" style="font-size: 11px; padding-top: 4px;">
+                <span id="metric-group-status" class="badge badge-muted">NONE</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-family: Consolas, monospace; font-size: 11px; color: var(--text-muted); line-height: 1.6; border-top: 1px solid var(--border-color); padding-top: 10px;">
+            <div>DETECTOR: <strong>ForestPersonNet & Haar Cascades</strong></div>
+            <div>ZONE ENGINE: <strong id="info-zone-status" style="color: #52B788;">Active Sector & GPS Containment</strong></div>
+            <div>ACCURACY FILTER: <strong style="color: #52B788;">100% Strictly Required</strong></div>
+            <div>FACE RECOGNITION: <strong>ForestFaceNet 128-D ArcFace</strong></div>
+            <div>VERIFICATION THRESHOLD: <strong>tau = 0.68</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-container" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="panel-header">
+          <span>AI INSPECTION EVENT AUDIT LOG</span>
+        </div>
+        <div class="panel-body" id="vision-log-container" style="font-family: Consolas, monospace; font-size: 11px;">
+          <div style="color: var(--text-muted);">
+            [SYSTEM READY] Standby for camera capture feed activation.
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/admin/static/js/socket_client.js"></script>
+  <script src="/admin/static/js/vision_stream.js"></script>
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    if (window.smartSocket) {
+      window.smartSocket.connect("admin_control_room");
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Officer & Ranger Management - Smart Forest Operations</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">SAR OFFICER & RANGER AUTHORIZATION COMMAND</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item">DASHBOARD</a>
+      <a href="/live-map" class="nav-item">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item">VISION MONITOR</a>
+      <a href="/zones" class="nav-item">ZONES</a>
+      <a href="/alerts" class="nav-item">ALERTS</a>
+      <a href="/visitors" class="nav-item">VISITORS</a>
+      <a href="/officers" class="nav-item active">OFFICERS</a>
+      <a href="/ai-models" class="nav-item">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online" id="appr-indicator"></span>
+        <span id="pending-count-pill">0 PENDING APPROVALS</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport" style="padding: 16px; flex-direction: column; gap: 16px; overflow-y: auto;">
+    <!-- Metric Summary Row -->
+    <div class="metrics-row" style="flex: 0 0 auto;">
+      <div class="metric-card">
+        <div class="metric-label">Total Field Officers</div>
+        <div class="metric-value" style="color: #93C5FD;" id="metric-total-officers">0</div>
+      </div>
+      <div class="metric-card" style="border-left: 3px solid #E09F3E;">
+        <div class="metric-label">Pending Badge Approvals</div>
+        <div class="metric-value" style="color: #E09F3E;" id="metric-pending-officers">0</div>
+      </div>
+      <div class="metric-card" style="border-left: 3px solid #52B788;">
+        <div class="metric-label">Active Deployable Rangers</div>
+        <div class="metric-value" style="color: #52B788;" id="metric-approved-officers">0</div>
+      </div>
+      <div class="metric-card" style="border-left: 3px solid #FF4D4D;">
+        <div class="metric-label">Suspended / Rejected</div>
+        <div class="metric-value" style="color: #FF4D4D;" id="metric-rejected-officers">0</div>
+      </div>
+    </div>
+
+    <!-- Officer Directory & Approval Deck -->
+    <div class="panel-container">
+      <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span>SAR RANGER REGISTRY & APPROVAL DESK</span>
+          <div style="display: flex; gap: 4px; margin-left: 12px;">
+            <button class="btn-tactical active" id="filter-all" onclick="setFilter('ALL')">ALL</button>
+            <button class="btn-tactical" id="filter-pending" onclick="setFilter('PENDING')">PENDING REVIEW</button>
+            <button class="btn-tactical" id="filter-approved" onclick="setFilter('APPROVED')">APPROVED</button>
+            <button class="btn-tactical" id="filter-rejected" onclick="setFilter('REJECTED')">REJECTED</button>
+          </div>
+        </div>
+        <input type="text" id="officer-search" placeholder="SEARCH BADGE, NAME OR DIVISION..." style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); color: #FFF; padding: 4px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; width: 260px;">
+      </div>
+
+      <div class="panel-body" style="padding: 0;">
+        <table class="mono-table">
+          <thead>
+            <tr>
+              <th>BADGE NUMBER</th>
+              <th>OFFICER NAME</th>
+              <th>DIVISION / UNIT</th>
+              <th>PHONE</th>
+              <th>DUTY STATE</th>
+              <th>APPROVAL STATUS</th>
+              <th>LAST COORD</th>
+              <th style="text-align: right;">AUTHORIZATION ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="officers-table-body">
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                LOADING RANGER DIRECTORY & BADGE COMMITS...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    let allOfficers = [];
+    let currentFilter = "ALL";
+
+    async function loadOfficers() {
+      try {
+        const res = await fetch("/api/officer/list");
+        allOfficers = await res.json();
+        updateSummaryMetrics();
+        renderOfficers();
+      } catch (err) {
+        console.error("Failed to load officers:", err);
+      }
+    }
+
+    function updateSummaryMetrics() {
+      const total = allOfficers.length;
+      const pending = allOfficers.filter(o => o.approval_status === "PENDING").length;
+      const approved = allOfficers.filter(o => o.approval_status === "APPROVED").length;
+      const rejected = allOfficers.filter(o => o.approval_status === "REJECTED").length;
+
+      document.getElementById("metric-total-officers").textContent = total;
+      document.getElementById("metric-pending-officers").textContent = pending;
+      document.getElementById("metric-approved-officers").textContent = approved;
+      document.getElementById("metric-rejected-officers").textContent = rejected;
+
+      const pill = document.getElementById("pending-count-pill");
+      const indicator = document.getElementById("appr-indicator");
+      if (pending > 0) {
+        pill.textContent = `${pending} PENDING APPROVALS`;
+        pill.style.color = "#E09F3E";
+        indicator.className = "status-indicator alert";
+      } else {
+        pill.textContent = `ALL RANGERS CLEARED`;
+        pill.style.color = "#52B788";
+        indicator.className = "status-indicator online";
+      }
+    }
+
+    function setFilter(f) {
+      currentFilter = f;
+      document.querySelectorAll(".btn-tactical").forEach(b => b.classList.remove("active"));
+      const btn = document.getElementById(`filter-${f.toLowerCase()}`);
+      if (btn) btn.classList.add("active");
+      renderOfficers();
+    }
+
+    function renderOfficers() {
+      const tbody = document.getElementById("officers-table-body");
+      const query = (document.getElementById("officer-search").value || "").toLowerCase().trim();
+
+      let filtered = allOfficers;
+      if (currentFilter !== "ALL") {
+        filtered = filtered.filter(o => (o.approval_status || "PENDING") === currentFilter);
+      }
+
+      if (query) {
+        filtered = filtered.filter(o =>
+          (o.badge_number || "").toLowerCase().includes(query) ||
+          (o.full_name || "").toLowerCase().includes(query) ||
+          (o.department || "").toLowerCase().includes(query)
+        );
+      }
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">NO MATCHING RANGERS FOUND.</td></tr>`;
+        return;
+      }
+
+      let html = "";
+      filtered.forEach(o => {
+        let apprBadgeClass = "badge-warning";
+        const appr = (o.approval_status || "PENDING").toUpperCase();
+        if (appr === "APPROVED") apprBadgeClass = "badge-safe";
+        else if (appr === "REJECTED") apprBadgeClass = "badge-critical";
+
+        let dutyBadgeClass = "badge-safe";
+        if (o.availability_status === "DISPATCHED") dutyBadgeClass = "badge-warning";
+        else if (o.availability_status === "OFF_DUTY") dutyBadgeClass = "badge-muted";
+
+        const coords = (o.current_latitude && o.current_longitude)
+          ? `[${o.current_latitude.toFixed(4)}, ${o.current_longitude.toFixed(4)}]`
+          : "OUTPOST BASE";
+
+        let actionButtons = "";
+        if (appr === "PENDING") {
+          actionButtons = `
+            <button onclick="approveOfficer('${o.officer_id}', 'APPROVE')" class="btn-tactical btn-safe" style="padding: 4px 10px; font-size: 10px; margin-right: 4px;">✓ APPROVE BADGE</button>
+            <button onclick="approveOfficer('${o.officer_id}', 'REJECT')" class="btn-tactical btn-danger" style="padding: 4px 10px; font-size: 10px;">✗ REJECT</button>
+          `;
+        } else if (appr === "APPROVED") {
+          actionButtons = `
+            <button onclick="approveOfficer('${o.officer_id}', 'REJECT')" class="btn-tactical btn-danger" style="padding: 4px 8px; font-size: 10px;">SUSPEND BADGE</button>
+          `;
+        } else {
+          actionButtons = `
+            <button onclick="approveOfficer('${o.officer_id}', 'APPROVE')" class="btn-tactical btn-safe" style="padding: 4px 8px; font-size: 10px;">RE-AUTHORIZE</button>
+          `;
+        }
+
+        html += `
+          <tr>
+            <td><strong style="color: #93C5FD;">${o.badge_number || "SAR-0000"}</strong></td>
+            <td><strong>${o.full_name}</strong></td>
+            <td>${o.department || "Wildland SAR Division"}</td>
+            <td>${o.phone || "N/A"}</td>
+            <td><span class="badge ${dutyBadgeClass}">${o.availability_status || "AVAILABLE"}</span></td>
+            <td><span class="badge ${apprBadgeClass}">${appr}</span></td>
+            <td style="font-family: Consolas, monospace; font-size: 10px;">${coords}</td>
+            <td style="text-align: right;">${actionButtons}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    async function approveOfficer(officerId, action) {
+      try {
+        const res = await fetch(`/api/officer/approve/${officerId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: action })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          // Update in-memory officer record
+          const idx = allOfficers.findIndex(o => o.officer_id === officerId);
+          if (idx !== -1) {
+            allOfficers[idx].approval_status = action === "APPROVE" ? "APPROVED" : "REJECTED";
+          }
+          updateSummaryMetrics();
+          renderOfficers();
+        } else {
+          alert(`Error: ${data.error || "Failed to update authorization"}`);
+        }
+      } catch (err) {
+        alert("Failed to communicate with Command Gateway.");
+      }
+    }
+
+    document.getElementById("officer-search").addEventListener("input", renderOfficers);
+
+    loadOfficers();
+    // Refresh every 5 seconds
+    setInterval(loadOfficers, 5000);
+  </script>
+</body>
+</html>

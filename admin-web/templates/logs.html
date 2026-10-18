@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System & Telemetry Logs - Smart Forest Operations</title>
+  <link rel="stylesheet" href="/admin/static/css/tactical_theme.css">
+</head>
+<body>
+  <div id="emergency-top-banner" style="display: none; background-color: var(--accent-critical-dark); border-bottom: 2px solid var(--accent-critical); padding: 8px 16px; flex-shrink: 0;"></div>
+
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="brand-icon">SF</div>
+      <div>
+        <span class="brand-title">Smart Forest Operations</span>
+        <span class="brand-subtitle">AUDIT TRAILS & TELEMETRY LOGS</span>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/dashboard" class="nav-item">DASHBOARD</a>
+      <a href="/live-map" class="nav-item">LIVE MAP</a>
+      <a href="/vision-monitor" class="nav-item">VISION MONITOR</a>
+      <a href="/zones" class="nav-item">ZONES</a>
+      <a href="/alerts" class="nav-item">ALERTS</a>
+      <a href="/visitors" class="nav-item">VISITORS</a>
+      <a href="/officers" class="nav-item">OFFICERS</a>
+      <a href="/ai-models" class="nav-item">AI PROVENANCE</a>
+      <a href="/logs" class="nav-item active">LOGS</a>
+    </nav>
+
+    <div class="status-section">
+      <div class="status-pill">
+        <span class="status-indicator online"></span>
+        <span>AUDIT SECURE</span>
+      </div>
+      <div class="time-ticker" id="live-clock">--:--:-- LOC</div>
+    </div>
+  </header>
+
+  <main class="main-viewport" style="padding: 16px; flex-direction: column; gap: 16px; overflow-y: auto;">
+    <div class="panel-container">
+      <div class="panel-header">
+        <span>SECURITY & GEOFENCE EVENT AUDIT JOURNAL</span>
+      </div>
+      <div class="panel-body" id="log-body" style="font-family: var(--font-mono); font-size: 11px; line-height: 1.8;">
+        <div>[INIT] Database SQLite engine mounted. Foreign keys and spatial indexes engaged.</div>
+        <div>[GEO] Loaded 4 active geofence polygons (Zone A, Zone B, Zone C, Zone D).</div>
+        <div>[AI] ForestPersonNet and ForestFaceNet architectures verified with zero pretrained weights.</div>
+        <div>[WSS] Flask-SocketIO event router operational on thread pool.</div>
+        <div>[READY] System operational. Awaiting incoming visitor telemetry packets.</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toTimeString().split(" ")[0] + " LOC";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>
