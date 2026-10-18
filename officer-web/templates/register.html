@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Officer Registration - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="background: var(--accent-rescuer); color: #FFF; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono);">SAR</div>
+      <strong style="text-transform: uppercase;">Officer & Ranger Terminal</strong>
+    </div>
+    <a href="/officer/login" class="btn" style="padding: 4px 8px; font-size: 11px;">LOGIN</a>
+  </header>
+
+  <main class="officer-container" style="justify-content: center;">
+    <div class="card">
+      <div class="card-title">FIELD OFFICER & RESCUER REGISTRATION</div>
+      <form id="officer-reg-form">
+        <div class="form-group">
+          <label class="form-label">FULL NAME</label>
+          <input type="text" id="full_name" class="form-input" required placeholder="Officer Marcus Vance">
+        </div>
+        <div class="form-group">
+          <label class="form-label">OFFICER BADGE NUMBER</label>
+          <input type="text" id="badge_number" class="form-input" required placeholder="SAR-8821">
+        </div>
+        <div class="form-group">
+          <label class="form-label">DEPARTMENT / DIVISION</label>
+          <input type="text" id="department" class="form-input" required value="Wildland Search & Rescue Wing">
+        </div>
+        <div class="form-group">
+          <label class="form-label">OFFICIAL EMAIL</label>
+          <input type="email" id="email" class="form-input" required placeholder="m.vance@forest.gov">
+        </div>
+        <div class="form-group">
+          <label class="form-label">PASSWORD</label>
+          <input type="password" id="password" class="form-input" required placeholder="••••••••">
+        </div>
+        <div class="form-group">
+          <label class="form-label">DUTY CONTACT PHONE</label>
+          <input type="tel" id="phone" class="form-input" required placeholder="+91 94444 55555">
+        </div>
+        <div id="reg-error" style="color: #FF4D4D; font-family: var(--font-mono); font-size: 11px; margin-bottom: 12px; display: none;"></div>
+        <button type="submit" class="btn btn-rescuer btn-block">SUBMIT BADGE FOR AUTHORIZATION</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script>
+    document.getElementById("officer-reg-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        role: "OFFICER",
+        full_name: document.getElementById("full_name").value,
+        badge_number: document.getElementById("badge_number").value,
+        department: document.getElementById("department").value,
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value,
+        phone: document.getElementById("phone").value
+      };
+
+      const errEl = document.getElementById("reg-error");
+      errEl.style.display = "none";
+
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          OfficerAuth.setSession(data.token, data.user, data.profile);
+          window.location.href = "/officer/approval";
+        } else {
+          errEl.textContent = data.error || "Registration failed.";
+          errEl.style.display = "block";
+        }
+      } catch (err) {
+        errEl.textContent = "Unable to connect to gateway.";
+        errEl.style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>

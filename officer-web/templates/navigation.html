@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tactical Bearing & Compass - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/officer/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; RADAR</a>
+      <strong style="text-transform: uppercase;">SAR Tactical Bearing HUD</strong>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <a id="btn-back-map" href="/officer/map" class="btn btn-rescuer" style="padding: 2px 8px; font-size: 11px;">RADAR MAP</a>
+    </div>
+  </header>
+
+  <main class="officer-container" style="justify-content: center; text-align: center; padding: 20px 16px;">
+    <div class="card" style="max-width: 480px; margin: 0 auto; padding: 24px 16px;">
+      <div class="card-title" style="justify-content: center; margin-bottom: 4px;">SEARCH & RESCUE AZIMUTH BEARING</div>
+      <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-bottom: 20px;" id="nav-target-subtitle">
+        INCIDENT: LOADING...
+      </div>
+
+      <!-- Rotating Tactical Compass -->
+      <div style="position: relative; width: 220px; height: 220px; margin: 0 auto 24px;">
+        <!-- Compass Outer Ring -->
+        <div style="position: absolute; inset: 0; border-radius: 50%; border: 3px solid var(--accent-rescuer); background: rgba(18, 22, 20, 0.9); box-shadow: 0 0 20px rgba(96, 165, 250, 0.2);"></div>
+
+        <!-- Cardinal Points (Fixed) -->
+        <div style="position: absolute; top: 8px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 12px; font-weight: bold; color: #FF4D4D;">N</div>
+        <div style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 12px; font-weight: bold; color: var(--text-muted);">S</div>
+        <div style="position: absolute; top: 50%; right: 8px; transform: translateY(-50%); font-family: var(--font-mono); font-size: 12px; font-weight: bold; color: var(--text-muted);">E</div>
+        <div style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%); font-family: var(--font-mono); font-size: 12px; font-weight: bold; color: var(--text-muted);">W</div>
+
+        <!-- Rotating Needle -->
+        <div id="compass-needle" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform: rotate(0deg);">
+          <div style="position: relative; width: 6px; height: 160px;">
+            <!-- North / Forward Pointer (Cyan/Blue) -->
+            <div style="width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 75px solid #60A5FA; position: absolute; top: 0; left: -7px; filter: drop-shadow(0 0 6px #60A5FA);"></div>
+            <!-- South Pointer (Muted) -->
+            <div style="width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 75px solid rgba(255, 255, 255, 0.3); position: absolute; bottom: 0; left: -7px;"></div>
+            <!-- Center Pivot Pin -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; border-radius: 50%; background: #FFF; border: 2px solid #1D4ED8;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bearing Readout -->
+      <div id="bearing-readout" style="font-size: 36px; font-weight: bold; font-family: var(--font-mono); color: var(--accent-rescuer-light); margin-bottom: 8px;">
+        ---&deg; --
+      </div>
+
+      <!-- Distance and Foot March Telemetry -->
+      <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.8; text-align: left;">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">DISTANCE TO TARGET:</span>
+          <strong id="readout-distance" style="color: #52B788;">-- METERS</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">ESTIMATED FOOT MARCH:</span>
+          <strong id="readout-march" style="color: #60A5FA;">-- MINUTES</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">RESCUER POS:</span>
+          <strong id="readout-rescuer" style="color: #FFF;">[--, --]</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">TARGET POS:</span>
+          <strong id="readout-target" style="color: #FFF;">[--, --]</strong>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button onclick="advancePatrol()" class="btn btn-rescuer" style="flex: 1;">PATROL ADVANCE (SIM)</button>
+        <button onclick="recenterGPS()" class="btn">RECENTER GPS</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script>
+    OfficerAuth.checkAuth();
+
+    function calcHaversine(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const phi1 = (lat1 * Math.PI) / 180;
+      const phi2 = (lat2 * Math.PI) / 180;
+      const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+      const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+      const a = Math.sin(deltaPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function calcBearing(lat1, lon1, lat2, lon2) {
+      const phi1 = (lat1 * Math.PI) / 180;
+      const phi2 = (lat2 * Math.PI) / 180;
+      const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+      const y = Math.sin(deltaLambda) * Math.cos(phi2);
+      const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function getCardinal(deg) {
+      const sectors = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+      return sectors[Math.round(deg / 22.5) % 16];
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    let targetPos = {
+      lat: parseFloat(urlParams.get("lat")) || 11.6740,
+      lng: parseFloat(urlParams.get("lng")) || 76.6310
+    };
+    const sosId = urlParams.get("id") || "SAR-ACTIVE";
+
+    let rescuerPos = {
+      lat: parseFloat(urlParams.get("olat")) || 11.6620,
+      lng: parseFloat(urlParams.get("olng")) || 76.6180
+    };
+
+    document.getElementById("btn-back-map").href = `/officer/map?lat=${targetPos.lat}&lng=${targetPos.lng}&id=${sosId}`;
+    document.getElementById("nav-target-subtitle").textContent = `INCIDENT TARGET: ${sosId}`;
+
+    function updateNavigationHUD() {
+      const dist = calcHaversine(rescuerPos.lat, rescuerPos.lng, targetPos.lat, targetPos.lng);
+      const bearing = calcBearing(rescuerPos.lat, rescuerPos.lng, targetPos.lat, targetPos.lng);
+      const cardinal = getCardinal(bearing);
+      const marchMin = Math.max(1, Math.round(dist / 75));
+
+      document.getElementById("compass-needle").style.transform = `rotate(${Math.round(bearing)}deg)`;
+      document.getElementById("bearing-readout").textContent = `${Math.round(bearing).toString().padStart(3, '0')}° ${cardinal}`;
+
+      const distText = dist >= 1000 ? `${(dist / 1000).toFixed(2)} KM` : `${Math.round(dist)} METERS`;
+      document.getElementById("readout-distance").textContent = distText;
+      document.getElementById("readout-march").textContent = `~${marchMin} MINUTES`;
+      document.getElementById("readout-rescuer").textContent = `[${rescuerPos.lat.toFixed(5)}, ${rescuerPos.lng.toFixed(5)}]`;
+      document.getElementById("readout-target").textContent = `[${targetPos.lat.toFixed(5)}, ${targetPos.lng.toFixed(5)}]`;
+    }
+
+    function advancePatrol() {
+      const dist = calcHaversine(rescuerPos.lat, rescuerPos.lng, targetPos.lat, targetPos.lng);
+      if (dist < 20) {
+        alert("SAR Rescuer has reached the incident site!");
+        return;
+      }
+      rescuerPos.lat += (targetPos.lat - rescuerPos.lat) * 0.25;
+      rescuerPos.lng += (targetPos.lng - rescuerPos.lng) * 0.25;
+      updateNavigationHUD();
+    }
+
+    function recenterGPS() {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const d = calcHaversine(pos.coords.latitude, pos.coords.longitude, 11.668, 76.625);
+          if (d < 100000) {
+            rescuerPos.lat = pos.coords.latitude;
+            rescuerPos.lng = pos.coords.longitude;
+          }
+          updateNavigationHUD();
+        }, () => updateNavigationHUD());
+      } else {
+        updateNavigationHUD();
+      }
+    }
+
+    updateNavigationHUD();
+  </script>
+</body>
+</html>

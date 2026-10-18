@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rescue Navigation Map - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    html, body {
+      height: 100vh !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    .officer-nav-main {
+      flex: 1 1 auto !important;
+      height: calc(100vh - 54px) !important;
+      width: 100% !important;
+      position: relative !important;
+      overflow: hidden !important;
+    }
+    #officer-nav-map {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 1 !important;
+      background-color: #101518 !important;
+    }
+    .leaflet-container {
+      background-color: #101518 !important;
+    }
+  </style>
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/officer/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; RADAR</a>
+      <strong style="text-transform: uppercase;">SAR Navigation Vector</strong>
+    </div>
+  </header>
+
+  <main class="officer-nav-main">
+    <div id="officer-nav-map"></div>
+
+    <!-- Top Left: Real-time Tactical Vector HUD -->
+    <div id="sar-vector-hud" style="position: absolute; top: 16px; left: 16px; z-index: 1000; background: rgba(18, 22, 20, 0.95); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px 16px; font-family: var(--font-mono); font-size: 11px; min-width: 290px; box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="color: var(--accent-rescuer-light); font-weight: bold; letter-spacing: 0.5px;">SAR NAVIGATION VECTOR</span>
+        <span id="hud-status" class="badge badge-rescuer">ACTIVE LOCK</span>
+      </div>
+      <div style="line-height: 1.7;">
+        <div>TARGET INCIDENT: <strong id="hud-target-id" style="color: #FFF;">--</strong></div>
+        <div>VECTOR BEARING: <strong id="hud-bearing" style="color: #60A5FA;">--° --</strong></div>
+        <div>DIRECT DISTANCE: <strong id="hud-distance" style="color: #52B788;">-- m</strong></div>
+        <div>EST. FOOT MARCH: <strong id="hud-eta" style="color: #FFF;">-- MIN (~4.5 km/h)</strong></div>
+        <div>RESCUER COORD: <strong id="hud-rescuer-coord" style="color: var(--text-muted);">[--, --]</strong></div>
+        <div>FIELD PATROL: <strong id="hud-officers-count" style="color: #34D399;">-- UNITS</strong></div>
+        <div style="margin-top: 6px; display: flex; align-items: center; gap: 6px;">
+          <span style="color: var(--text-muted); font-size: 10px;">MAP BASE:</span>
+          <select id="select-officer-basemap" style="flex: 1; background: #1B221E; color: #FFF; border: 1px solid var(--border-color); padding: 3px 6px; border-radius: 3px; font-family: var(--font-mono); font-size: 10px; outline: none;">
+            <option value="tactical_dark" selected>Tactical Dark Mode</option>
+            <option value="google_satellite">Google Satellite (Hybrid)</option>
+            <option value="google_terrain">Google Terrain</option>
+            <option value="google_streets">Google Roadmap</option>
+            <option value="osm">OpenStreetMap</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
+        <button id="btn-sim-march" onclick="if(window.officerMap) window.officerMap.simulateMarch()" class="btn btn-rescuer" style="padding: 5px 8px; font-size: 10px; flex: 1;">PATROL ADVANCE (SIM)</button>
+        <button id="btn-snap-base" onclick="if(window.officerMap) window.officerMap.snapToOutpost()" class="btn" style="padding: 5px 8px; font-size: 10px; background: rgba(37,99,235,0.2); border: 1px solid #3B82F6; color: #93C5FD;">SNAP TO BASE (SIM)</button>
+        <button id="btn-open-compass" onclick="if(window.officerMap) window.officerMap.openCompass()" class="btn" style="padding: 5px 8px; font-size: 10px;">COMPASS HUD</button>
+      </div>
+    </div>
+
+    <!-- Bottom Left: Map Legend -->
+    <div style="position: absolute; bottom: 16px; left: 16px; z-index: 1000; background: rgba(24, 32, 38, 0.95); border: 1px solid var(--border-color); border-radius: 4px; padding: 10px 14px; font-family: var(--font-mono); font-size: 11px; line-height: 1.6;">
+      <span style="color: #60A5FA;">&bull; BLUE [YOU]: ACTIVE RESCUER COORD</span><br/>
+      <span style="color: #34D399;">&bull; GREEN / AMBER: FIELD PATROL OFFICERS</span><br/>
+      <span style="color: #D90429;">&bull; RED: DISTRESSED VISITOR TARGET</span><br/>
+      <span style="color: var(--text-muted);">&bull; DASHED LINE: DIRECT ACCESS BEARING VECTOR</span>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script src="/officer/static/js/gps.js"></script>
+  <script src="/officer/static/js/map.js"></script>
+</body>
+</html>

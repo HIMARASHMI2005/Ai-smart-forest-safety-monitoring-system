@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visitor Profile - Smart Forest</title>
+  <link rel="stylesheet" href="/visitor/static/css/visitor.css">
+</head>
+<body>
+  <header class="visitor-app-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/visitor/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; BACK</a>
+      <strong style="text-transform: uppercase;">Profile & Contacts</strong>
+    </div>
+  </header>
+
+  <main class="visitor-container">
+    <div class="card">
+      <div class="card-title">PROFILE DETAILS</div>
+      <div style="font-family: var(--font-mono); font-size: 12px; line-height: 1.8;">
+        <div>VISITOR ID: <strong id="prof-id">--</strong></div>
+        <div>FULL NAME: <strong id="prof-name">--</strong></div>
+        <div>PHONE NUMBER: <strong id="prof-phone">--</strong></div>
+        <div>EMERGENCY CONTACT: <strong id="prof-em-name">--</strong></div>
+        <div>EMERGENCY PHONE: <strong id="prof-em-phone">--</strong></div>
+      </div>
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+        <a href="/visitor/face-registration" class="btn btn-primary btn-block">RE-CALIBRATE 5-POSE FACE BIOMETRICS</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/visitor/static/js/auth.js"></script>
+  <script>
+    VisitorAuth.checkAuth();
+    const p = VisitorAuth.getProfile();
+    if (p) {
+      document.getElementById("prof-id").textContent = p.visitor_id;
+      document.getElementById("prof-name").textContent = p.full_name;
+      document.getElementById("prof-phone").textContent = p.phone;
+      document.getElementById("prof-em-name").textContent = p.emergency_contact_name;
+      document.getElementById("prof-em-phone").textContent = p.emergency_contact_phone;
+    }
+  </script>
+</body>
+</html>

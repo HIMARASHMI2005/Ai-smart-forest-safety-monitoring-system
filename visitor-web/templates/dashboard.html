@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Safety Telemetry Dashboard - Smart Forest</title>
+  <link rel="stylesheet" href="/visitor/static/css/visitor.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <header class="visitor-app-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="background: var(--accent-safe); color: #FFF; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono);">SF</div>
+      <strong style="text-transform: uppercase;">Smart Forest Visitor</strong>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span class="badge badge-safe" id="sync-status-badge">ONLINE</span>
+      <button onclick="VisitorAuth.logout()" class="btn" style="padding: 2px 6px; font-size: 10px;">LOGOUT</button>
+    </div>
+  </header>
+
+  <main class="visitor-container">
+    <!-- Visitor Identity Header Card -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div style="font-size: 16px; font-weight: bold;" id="visitor-name">Registered Visitor</div>
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);" id="visitor-id-tag">VST-XXXXXX</div>
+        </div>
+        <span class="badge badge-safe" id="checkin-badge">CHECKED IN</span>
+      </div>
+    </div>
+
+    <!-- Safety Telemetry Grid -->
+    <div class="card">
+      <div class="card-title">
+        <span>SAFETY TELEMETRY</span>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <span class="badge badge-safe" id="gps-lock-status">SEARCHING GPS...</span>
+          <button id="btn-toggle-sim-gps" onclick="if(window.visitorTracker) window.visitorTracker.toggleSimulation()" class="btn" style="padding: 2px 6px; font-size: 10px;">SIMULATE PATROL GPS</button>
+        </div>
+      </div>
+
+      <div class="telemetry-grid">
+        <div class="telemetry-tile">
+          <div class="tile-label">CURRENT ZONE</div>
+          <div class="tile-value" id="telemetry-zone" style="color: #52B788;">ZONE_A: ECO TRAIL</div>
+        </div>
+        <div class="telemetry-tile">
+          <div class="tile-label">SAFETY STATUS</div>
+          <div class="tile-value">
+            <span class="badge badge-safe" id="telemetry-risk-badge">SAFE (LOW)</span>
+          </div>
+        </div>
+        <div class="telemetry-tile">
+          <div class="tile-label">LATITUDE</div>
+          <div class="tile-value" id="telemetry-lat">--.-----</div>
+        </div>
+        <div class="telemetry-tile">
+          <div class="tile-label">LONGITUDE</div>
+          <div class="tile-value" id="telemetry-lng">--.-----</div>
+        </div>
+        <div class="telemetry-tile">
+          <div class="tile-label">GPS ACCURACY</div>
+          <div class="tile-value" id="telemetry-acc">&plusmn;-- m</div>
+        </div>
+        <div class="telemetry-tile">
+          <div class="tile-label">SPEED</div>
+          <div class="tile-value" id="telemetry-spd">-- km/h</div>
+        </div>
+      </div>
+
+      <!-- Risk Factor Breakdown -->
+      <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; margin-bottom: 6px;">
+          <span style="color: var(--text-muted);">RISK INDEX:</span>
+          <strong id="telemetry-risk-score" style="color: #52B788;">5/100</strong>
+        </div>
+        <div id="telemetry-risk-reasons" style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); line-height: 1.5;">
+          • ZONE_A_TERRAIN_BASE (+5)
+        </div>
+      </div>
+    </div>
+
+    <!-- Tactical Emergency SOS Trigger -->
+    <div class="card" style="border-color: rgba(217, 4, 41, 0.4); background: rgba(27, 34, 30, 0.8);">
+      <div class="card-title" style="color: #FF4D4D;">SEARCH & RESCUE DISTRESS PROTOCOL</div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+        In the event of animal encounter, injury, or route disorientation, tap the button below twice to dispatch immediate coordinates and video feed to field rangers.
+      </p>
+      <button id="btn-main-sos" class="sos-trigger-btn">EMERGENCY SOS</button>
+    </div>
+
+    <!-- Quick Navigation Links -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      <a href="/visitor/zone-status" class="btn">ZONE BOUNDS</a>
+      <a href="/visitor/profile" class="btn">EMERGENCY CONTACTS</a>
+    </div>
+  </main>
+
+  <script src="/visitor/static/js/auth.js"></script>
+  <script src="/visitor/static/js/gps.js"></script>
+  <script src="/visitor/static/js/sos.js"></script>
+  <script>
+    VisitorAuth.checkAuth();
+    const profile = VisitorAuth.getProfile();
+    if (profile) {
+      document.getElementById("visitor-name").textContent = profile.full_name || "Registered Visitor";
+      document.getElementById("visitor-id-tag").textContent = profile.visitor_id || "VST-000000";
+    }
+  </script>
+</body>
+</html>

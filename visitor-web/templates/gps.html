@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPS Telemetry Detail - Smart Forest</title>
+  <link rel="stylesheet" href="/visitor/static/css/visitor.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <header class="visitor-app-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/visitor/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; BACK</a>
+      <strong style="text-transform: uppercase;">GPS Breadcrumb Trail</strong>
+    </div>
+  </header>
+
+  <main class="visitor-container">
+    <div class="card" style="padding: 0; overflow: hidden; height: 360px;">
+      <div id="visitor-gps-map" style="width: 100%; height: 100%;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">GEOSPATIAL AUDIT</div>
+      <div style="font-family: var(--font-mono); font-size: 11px; line-height: 1.6;">
+        <div>DATUM: WGS 84 (EPSG:4326)</div>
+        <div>ALGORITHM: Shapely Ray Casting</div>
+        <div>CONTAINMENT PRECISION: ±5m Planar GEOS</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/visitor/static/js/auth.js"></script>
+  <script src="/visitor/static/js/gps.js"></script>
+  <script>
+    VisitorAuth.checkAuth();
+    const map = L.map("visitor-gps-map", { center: [11.660, 76.620], zoom: 14 });
+    const baseLayers = {
+      "Google Satellite (Hybrid)": L.tileLayer("https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", {
+        attribution: '&copy; Google Maps Satellite',
+        maxZoom: 20
+      }),
+      "Google Terrain": L.tileLayer("https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}", {
+        attribution: '&copy; Google Maps Terrain',
+        maxZoom: 20
+      }),
+      "Google Roadmap": L.tileLayer("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+        attribution: '&copy; Google Maps',
+        maxZoom: 20
+      }),
+      "OpenStreetMap (Standard)": L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; OpenStreetMap contributors',
+        subdomains: "abc",
+        maxZoom: 19
+      }),
+      "Tactical Dark (CartoDB)": L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        attribution: '&copy; CARTO &copy; OpenStreetMap',
+        subdomains: "abcd",
+        maxZoom: 19
+      })
+    };
+
+    baseLayers["Tactical Dark (CartoDB)"].addTo(map);
+    L.control.layers(baseLayers, null, { position: "topright" }).addTo(map);
+
+    const p = VisitorAuth.getProfile();
+    if (p) {
+      fetch(`/api/location/visitor/${p.visitor_id}/history?limit=50`)
+        .then(r => r.json())
+        .then(pts => {
+          if (pts.length > 0) {
+            const latlngs = pts.map(pt => [pt.latitude, pt.longitude]);
+            L.polyline(latlngs, { color: "#52B788", weight: 2 }).addTo(map);
+            L.marker(latlngs[latlngs.length - 1]).addTo(map).bindPopup("Current Position").openPopup();
+            map.fitBounds(L.latLngBounds(latlngs));
+          }
+        });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pending Approval - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="background: var(--accent-rescuer); color: #FFF; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono);">SAR</div>
+      <strong style="text-transform: uppercase;">Officer & Ranger Terminal</strong>
+    </div>
+    <button onclick="OfficerAuth.logout()" class="btn" style="padding: 4px 8px; font-size: 11px;">LOGOUT</button>
+  </header>
+
+  <main class="officer-container" style="justify-content: center;">
+    <div class="card" style="text-align: center; padding: 32px 16px;">
+      <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(224, 159, 62, 0.2); border: 2px solid var(--accent-warning); margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--accent-warning);">
+        &#9888;
+      </div>
+      <div class="card-title" style="justify-content: center; font-size: 15px;">BADGE VERIFICATION PENDING</div>
+      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; max-width: 480px; margin: 0 auto 20px;">
+        Your ranger credentials and badge registration have been committed to the security database. Operational deployment requires confirmation by the Forest Command Administrator.
+      </p>
+      <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-bottom: 24px;">
+        BADGE: <strong id="appr-badge" style="color: #FFF;">--</strong> &bull; STATUS: <span id="appr-badge-status" class="badge badge-warning">PENDING AUTHORIZATION</span>
+      </div>
+      <div id="status-feedback" style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); min-height: 20px; margin-bottom: 16px;"></div>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="btn-check-status" onclick="checkStatus()" class="btn btn-rescuer">CHECK APPROVAL STATUS</button>
+        <a href="/officer/login" class="btn">RE-AUTHENTICATE</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script>
+    const p = OfficerAuth.getProfile();
+    if (p) {
+      document.getElementById("appr-badge").textContent = p.badge_number || "SAR-0000";
+    }
+
+    async function checkStatus() {
+      const token = OfficerAuth.getToken();
+      const feedbackEl = document.getElementById("status-feedback");
+      const statusBadge = document.getElementById("appr-badge-status");
+      const btnCheck = document.getElementById("btn-check-status");
+
+      if (!token) {
+        feedbackEl.style.color = "#FF4D4D";
+        feedbackEl.textContent = "No active credentials session found. Please log in.";
+        setTimeout(() => window.location.href = "/officer/login", 2000);
+        return;
+      }
+
+      btnCheck.disabled = true;
+      btnCheck.textContent = "POLLING GATEWAY...";
+      feedbackEl.style.color = "var(--text-muted)";
+      feedbackEl.textContent = "Verifying officer authorization with Command Gateway...";
+
+      try {
+        const res = await fetch("/api/auth/me", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (res.status === 401) {
+          feedbackEl.style.color = "#FF4D4D";
+          feedbackEl.textContent = "Session expired. Redirecting to login...";
+          setTimeout(() => window.location.href = "/officer/login", 1500);
+          return;
+        }
+
+        if (data.profile) {
+          const appr = (data.profile.approval_status || "PENDING").toUpperCase();
+          if (appr === "APPROVED") {
+            statusBadge.className = "badge badge-safe";
+            statusBadge.textContent = "APPROVED";
+            feedbackEl.style.color = "#52B788";
+            feedbackEl.textContent = "AUTHORIZATION GRANTED! Synchronizing tactical session...";
+            OfficerAuth.setSession(token, data.user, data.profile);
+            setTimeout(() => {
+              window.location.href = "/officer/dashboard";
+            }, 1200);
+          } else if (appr === "REJECTED") {
+            statusBadge.className = "badge badge-critical";
+            statusBadge.textContent = "REJECTED";
+            feedbackEl.style.color = "#FF4D4D";
+            feedbackEl.textContent = "Authorization rejected by Wildland Administrator. Contact Forest Command.";
+          } else {
+            statusBadge.className = "badge badge-warning";
+            statusBadge.textContent = "PENDING REVIEW";
+            feedbackEl.style.color = "#E09F3E";
+            feedbackEl.textContent = `Status: PENDING REVIEW at ${new Date().toLocaleTimeString()}. Awaiting Command Admin Approval.`;
+          }
+        } else {
+          feedbackEl.style.color = "#FF4D4D";
+          feedbackEl.textContent = data.error || "Unable to read officer profile.";
+        }
+      } catch (err) {
+        feedbackEl.style.color = "#FF4D4D";
+        feedbackEl.textContent = "Failed to connect to gateway.";
+      } finally {
+        btnCheck.disabled = false;
+        btnCheck.textContent = "CHECK APPROVAL STATUS";
+      }
+    }
+
+    // Auto-check on page load and every 8 seconds
+    checkStatus();
+    setInterval(checkStatus, 8000);
+  </script>
+</body>
+</html>

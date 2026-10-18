@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geofence Zone Status - Smart Forest</title>
+  <link rel="stylesheet" href="/visitor/static/css/visitor.css">
+</head>
+<body>
+  <header class="visitor-app-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/visitor/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; BACK</a>
+      <strong style="text-transform: uppercase;">Geofence Bounds</strong>
+    </div>
+  </header>
+
+  <main class="visitor-container">
+    <div class="card">
+      <div class="card-title">ZONAL HAZARD TIER DEFINITIONS</div>
+      <div style="font-family: var(--font-mono); font-size: 11px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="border-left: 3px solid #2D6A4F; padding-left: 8px;">
+          <strong style="color: #52B788;">ZONE A: ECO TRAIL CORRIDOR</strong><br/>
+          Permitted recreation trek. Designated tourist trail. Threat score +5.
+        </div>
+        <div style="border-left: 3px solid #E09F3E; padding-left: 8px;">
+          <strong style="color: #E09F3E;">ZONE B: MONITORED FOREST BUFFER</strong><br/>
+          Caution buffer strip. Off-trail warning in effect. Threat score +25.
+        </div>
+        <div style="border-left: 3px solid #C1121F; padding-left: 8px;">
+          <strong style="color: #FF4D4D;">ZONE C: RESTRICTED CORRIDOR</strong><br/>
+          High risk cliffs, gorges, and dense brush. Authorized personnel only. Threat score +55.
+        </div>
+        <div style="border-left: 3px solid #780000; padding-left: 8px;">
+          <strong style="color: #FF2E4C;">ZONE D: CORE WILDLIFE SANCTUARY</strong><br/>
+          Critical tiger and elephant habitat. Immediate SAR dispatch triggered upon breach. Threat score +80.
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

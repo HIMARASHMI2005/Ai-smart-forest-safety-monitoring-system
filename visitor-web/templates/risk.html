@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deterministic Risk Audit - Smart Forest</title>
+  <link rel="stylesheet" href="/visitor/static/css/visitor.css">
+</head>
+<body>
+  <header class="visitor-app-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/visitor/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; BACK</a>
+      <strong style="text-transform: uppercase;">Risk Scoring Engine</strong>
+    </div>
+  </header>
+
+  <main class="visitor-container">
+    <div class="card">
+      <div class="card-title">DETERMINISTIC EVALUATION FORMULA</div>
+      <div style="font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px;">
+        R = min(100, w_SOS&middot;I_SOS + S_zone(Z) + w_unknown&middot;I_unknown + w_crowd&middot;I_crowd + w_night&middot;I_night + w_sec&middot;I_sec)
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 11px; line-height: 1.8;">
+        <div>&bull; <strong>w_SOS = 100</strong> (Emergency Distress Override)</div>
+        <div>&bull; <strong>S_zone(A) = +5</strong> (Eco Trail Corridor)</div>
+        <div>&bull; <strong>S_zone(B) = +25</strong> (Monitored Buffer)</div>
+        <div>&bull; <strong>S_zone(C) = +55</strong> (Restricted Corridor)</div>
+        <div>&bull; <strong>S_zone(D) = +80</strong> (Core Wildlife Sanctuary)</div>
+        <div>&bull; <strong>w_unknown = +30</strong> (Unregistered Camera Face)</div>
+        <div>&bull; <strong>w_crowd = +25</strong> (Cluster &gt;3 Persons in Restricted Zone)</div>
+        <div>&bull; <strong>w_night = +15</strong> (18:30 to 06:00 Temporal Window)</div>
+        <div>&bull; <strong>w_sec = +15</strong> (Off-Trail Dwell &gt;15 Mins)</div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

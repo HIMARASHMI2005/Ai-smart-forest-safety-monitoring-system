@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incident Details - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/officer/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; RADAR</a>
+      <strong style="text-transform: uppercase;">SAR Dispatch Triage</strong>
+    </div>
+  </header>
+
+  <main class="officer-container">
+    <div class="card" id="incident-detail-card">
+      <div class="card-title">INCIDENT DISPATCH DOSSIER</div>
+      <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); line-height: 1.8;">
+        <div>INCIDENT ID: <strong id="inc-id" style="color: #FFF;">--</strong></div>
+        <div>STATUS: <span class="badge badge-critical" id="inc-status">CRITICAL</span></div>
+        <div>VISITOR: <strong id="inc-visitor" style="color: #FFF;">--</strong></div>
+        <div>SECTOR ZONE: <strong id="inc-zone" style="color: #FFF;">--</strong></div>
+        <div>COORDINATES: <strong id="inc-coords" style="color: #FFF;">--</strong></div>
+      </div>
+      <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <a id="btn-map-nav" href="/officer/map" class="btn btn-rescuer">OPEN MAP RADAR</a>
+        <a id="btn-video-rev" href="/officer/video" class="btn">ASSESS SOS VIDEO</a>
+        <a id="btn-resolve-inc" href="/officer/resolve" class="btn btn-safe">RESOLVE INCIDENT</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script>
+    OfficerAuth.checkAuth();
+    const id = window.location.pathname.split("/").pop();
+    document.getElementById("inc-id").textContent = id;
+    document.getElementById("btn-map-nav").href = `/officer/map?id=${id}`;
+    document.getElementById("btn-video-rev").href = `/officer/video?sos_id=${id}`;
+    document.getElementById("btn-resolve-inc").href = `/officer/resolve?sos_id=${id}`;
+  </script>
+</body>
+</html>

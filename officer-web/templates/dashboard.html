@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Officer Tactical Dashboard - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="background: var(--accent-rescuer); color: #FFF; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono);">SAR</div>
+      <strong style="text-transform: uppercase;">Field Officer Tactical Deck</strong>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span class="badge badge-rescuer" id="officer-status-badge">AVAILABLE</span>
+      <button onclick="OfficerAuth.logout()" class="btn" style="padding: 2px 6px; font-size: 10px;">LOGOUT</button>
+    </div>
+  </header>
+
+  <main class="officer-container">
+    <!-- Officer Badge & Telemetry Bar -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <div style="font-size: 15px; font-weight: bold;" id="officer-name">Field Officer</div>
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);" id="officer-badge-info">
+            BADGE: SAR-0000 &bull; SECTOR PATROL
+          </div>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 11px; text-align: right;">
+          <div>GPS: [<span id="officer-lat">--.-----</span>, <span id="officer-lng">--.-----</span>]</div>
+          <div style="color: #52B788;">PATROL BEACON ACTIVE</div>
+        </div>
+      </div>
+
+      <!-- Availability Switcher -->
+      <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; align-items: center;">
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">DUTY STATE:</span>
+        <button onclick="setStatus('AVAILABLE')" class="btn" style="padding: 4px 10px; font-size: 10px;">AVAILABLE</button>
+        <button onclick="setStatus('DISPATCHED')" class="btn btn-rescuer" style="padding: 4px 10px; font-size: 10px;">DISPATCHED</button>
+        <button onclick="setStatus('OFF_DUTY')" class="btn" style="padding: 4px 10px; font-size: 10px;">OFF DUTY</button>
+      </div>
+    </div>
+
+    <!-- Active Incident Radar -->
+    <div class="card">
+      <div class="card-title">
+        <span>TACTICAL INCIDENT RADAR</span>
+        <span class="badge badge-critical">LIVE DISTRESS ALERTS</span>
+      </div>
+      <div id="officer-incident-feed">
+        <div style="color: var(--text-muted); font-family: Consolas, monospace; text-align: center; padding: 20px;">
+          POLLING SAR INCIDENT QUEUE...
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script src="/officer/static/js/gps.js"></script>
+  <script src="/officer/static/js/incidents.js"></script>
+  <script>
+    OfficerAuth.checkAuth();
+    const p = OfficerAuth.getProfile();
+    if (p) {
+      document.getElementById("officer-name").textContent = p.full_name || "Field Officer";
+      document.getElementById("officer-badge-info").textContent = `BADGE: ${p.badge_number} • ${p.department}`;
+      document.getElementById("officer-status-badge").textContent = p.availability_status || "AVAILABLE";
+    }
+
+    async function setStatus(status) {
+      if (!p) return;
+      await fetch("/api/officer/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ officer_id: p.officer_id, status: status })
+      });
+      document.getElementById("officer-status-badge").textContent = status;
+    }
+  </script>
+</body>
+</html>

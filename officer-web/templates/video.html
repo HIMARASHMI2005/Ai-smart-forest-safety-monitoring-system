@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOS Video Review - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/officer/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; RADAR</a>
+      <strong style="text-transform: uppercase;">SOS Video Assessment</strong>
+    </div>
+    <span class="badge badge-critical" id="video-sos-id">SOS-FEED</span>
+  </header>
+
+  <main class="officer-container">
+    <div class="card" style="padding: 0; overflow: hidden; background: #000;">
+      <div style="position: relative; width: 100%; height: 380px; display: flex; align-items: center; justify-content: center;">
+        <video id="sos-playback-video" controls playsinline style="width: 100%; height: 100%; max-height: 380px;"></video>
+      </div>
+      <div style="padding: 10px 14px; background: var(--bg-surface); border-top: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 11px;">
+        <span id="video-load-status">STANDBY FOR VIDEO STREAM...</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">SEQUENTIAL 30-SEC RECORDING CHUNKS</div>
+      <div id="chunks-playlist">
+        <div style="color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; padding: 10px;">
+          SCANNING ARCHIVE FOR UPLOADED VIDEO CHUNKS...
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script src="/officer/static/js/video.js"></script>
+</body>
+</html>

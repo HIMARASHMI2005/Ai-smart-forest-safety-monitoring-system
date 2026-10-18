@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Officer Profile - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/officer/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; RADAR</a>
+      <strong style="text-transform: uppercase;">Officer Profile</strong>
+    </div>
+  </header>
+
+  <main class="officer-container">
+    <div class="card">
+      <div class="card-title">RANGER SERVICE RECORD</div>
+      <div style="font-family: var(--font-mono); font-size: 12px; line-height: 1.8;">
+        <div>OFFICER ID: <strong id="o-id">--</strong></div>
+        <div>BADGE NUMBER: <strong id="o-badge">--</strong></div>
+        <div>FULL NAME: <strong id="o-name">--</strong></div>
+        <div>DEPARTMENT: <strong id="o-dept">--</strong></div>
+        <div>CONTACT PHONE: <strong id="o-phone">--</strong></div>
+        <div>APPROVAL STATUS: <span class="badge badge-safe" id="o-appr">APPROVED</span></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script>
+    OfficerAuth.checkAuth();
+    const p = OfficerAuth.getProfile();
+    if (p) {
+      document.getElementById("o-id").textContent = p.officer_id;
+      document.getElementById("o-badge").textContent = p.badge_number;
+      document.getElementById("o-name").textContent = p.full_name;
+      document.getElementById("o-dept").textContent = p.department;
+      document.getElementById("o-phone").textContent = p.phone;
+      document.getElementById("o-appr").textContent = p.approval_status;
+    }
+  </script>
+</body>
+</html>

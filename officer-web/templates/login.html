@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Officer Login - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="background: var(--accent-rescuer); color: #FFF; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono);">SAR</div>
+      <strong style="text-transform: uppercase;">Officer & Ranger Terminal</strong>
+    </div>
+    <a href="/officer/register" class="btn" style="padding: 4px 8px; font-size: 11px;">ENROLL BADGE</a>
+  </header>
+
+  <main class="officer-container" style="justify-content: center;">
+    <div class="card">
+      <div class="card-title">OFFICER AUTHENTICATION</div>
+      <form id="officer-login-form">
+        <div class="form-group">
+          <label class="form-label">OFFICER EMAIL</label>
+          <input type="email" id="email" class="form-input" required placeholder="ranger@forest.gov">
+        </div>
+        <div class="form-group">
+          <label class="form-label">PASSWORD</label>
+          <input type="password" id="password" class="form-input" required placeholder="••••••••">
+        </div>
+        <div id="login-error" style="color: #FF4D4D; font-family: var(--font-mono); font-size: 11px; margin-bottom: 12px; display: none;"></div>
+        <button type="submit" class="btn btn-rescuer btn-block">AUTHENTICATE CREDENTIALS</button>
+      </form>
+      <div style="margin-top: 14px; text-align: center;">
+        <a href="/officer/register" style="color: var(--text-muted); font-size: 12px; text-decoration: none;">New Ranger? Register Badge & Division</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script>
+    document.getElementById("officer-login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const errEl = document.getElementById("login-error");
+
+      errEl.style.display = "none";
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, expected_role: "OFFICER" })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (data.user && data.user.role !== "OFFICER") {
+            errEl.textContent = "Access Denied: Only Officer accounts can log in to the SAR Officer Terminal. Please use the Visitor Portal at /visitor/login.";
+            errEl.style.display = "block";
+            return;
+          }
+          OfficerAuth.setSession(data.token, data.user, data.profile);
+          if (data.profile && data.profile.approval_status === "PENDING") {
+            window.location.href = "/officer/approval";
+          } else {
+            window.location.href = "/officer/dashboard";
+          }
+        } else {
+          errEl.textContent = data.error || "Authentication failed.";
+          errEl.style.display = "block";
+        }
+      } catch (err) {
+        errEl.textContent = "Unable to connect to gateway.";
+        errEl.style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>

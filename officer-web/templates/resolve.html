@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resolve Incident - Smart Forest SAR</title>
+  <link rel="stylesheet" href="/officer/static/css/officer.css">
+</head>
+<body>
+  <header class="officer-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/officer/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; RADAR</a>
+      <strong style="text-transform: uppercase;">Close Incident Report</strong>
+    </div>
+  </header>
+
+  <main class="officer-container">
+    <div class="card">
+      <div class="card-title">MANDATORY SAR INCIDENT ACTION REPORT</div>
+      <form id="resolve-form">
+        <div class="form-group">
+          <label class="form-label">INCIDENT ID (SOS_ID)</label>
+          <input type="text" id="res-sos-id" class="form-input" required readonly style="background: var(--bg-primary);">
+        </div>
+        <div class="form-group">
+          <label class="form-label">INCIDENT RESOLUTION NOTES</label>
+          <textarea id="res-notes" class="form-input" rows="5" required placeholder="Detail condition of visitor, medical aid delivered, evacuation method, or reason for all-clear..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-safe btn-block">COMMIT RESOLUTION & RESTORE ALL-CLEAR</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/officer/static/js/auth.js"></script>
+  <script>
+    OfficerAuth.checkAuth();
+    const urlParams = new URLSearchParams(window.location.search);
+    const sosId = urlParams.get("sos_id");
+    if (sosId) {
+      document.getElementById("res-sos-id").value = sosId;
+    }
+
+    document.getElementById("resolve-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const p = OfficerAuth.getProfile();
+      const payload = {
+        sos_id: document.getElementById("res-sos-id").value,
+        resolution_notes: document.getElementById("res-notes").value,
+        officer_id: p ? p.officer_id : null
+      };
+
+      const res = await fetch("/api/sos/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        alert("Incident successfully marked RESOLVED. All-clear dispatched.");
+        window.location.href = "/officer/dashboard";
+      } else {
+        alert("Failed to submit resolution report.");
+      }
+    });
+  </script>
+</body>
+</html>

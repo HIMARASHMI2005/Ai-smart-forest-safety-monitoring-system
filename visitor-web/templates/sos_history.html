@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distress History - Smart Forest</title>
+  <link rel="stylesheet" href="/visitor/static/css/visitor.css">
+</head>
+<body>
+  <header class="visitor-app-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="/visitor/dashboard" class="btn" style="padding: 2px 8px; font-size: 11px;">&larr; BACK</a>
+      <strong style="text-transform: uppercase;">SOS History</strong>
+    </div>
+  </header>
+
+  <main class="visitor-container">
+    <div class="card">
+      <div class="card-title">PAST EMERGENCY EVENTS</div>
+      <div id="sos-history-list" style="font-family: var(--font-mono); font-size: 11px;">
+        <div style="color: var(--text-muted); text-align: center; padding: 12px;">LOADING HISTORY...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/visitor/static/js/auth.js"></script>
+  <script>
+    VisitorAuth.checkAuth();
+    const p = VisitorAuth.getProfile();
+    if (p) {
+      fetch(`/api/visitor/${p.visitor_id}/sos-history`)
+        .then(r => r.json())
+        .then(list => {
+          const container = document.getElementById("sos-history-list");
+          if (list.length === 0) {
+            container.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 12px;">NO RECORDED DISTRESS EVENTS.</div>`;
+            return;
+          }
+          let html = "";
+          list.forEach(e => {
+            html += `
+              <div style="border-bottom: 1px solid var(--border-color); padding: 8px 0;">
+                <div>ID: <strong>${e.sos_id}</strong> | STATUS: <strong>${e.status}</strong></div>
+                <div style="color: var(--text-muted);">TRIGGERED: ${new Date(e.triggered_at).toLocaleString()}</div>
+                <div>ZONE: ${e.initial_zone} | COORD: [${e.initial_lat.toFixed(4)}, ${e.initial_lng.toFixed(4)}]</div>
+              </div>
+            `;
+          });
+          container.innerHTML = html;
+        });
+    }
+  </script>
+</body>
+</html>
